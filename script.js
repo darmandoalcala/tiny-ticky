@@ -7,60 +7,62 @@ document.addEventListener('DOMContentLoaded', () => {
     const newTicketBtn = document.getElementById('newTicketBtn');
     const ticketHeader = document.querySelector('.ticket-header p');
 
-    // Drag and drop functionality for file upload
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        fileUploadBox.addEventListener(eventName, preventDefaults, false);
-    });
+    // Drag and drop functionality for file upload (only active if components exist in HTML)
+    if (fileUploadBox && fileInput && fileNameDisplay) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            fileUploadBox.addEventListener(eventName, preventDefaults, false);
+        });
 
-    function preventDefaults(e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-
-    ['dragenter', 'dragover'].forEach(eventName => {
-        fileUploadBox.addEventListener(eventName, highlight, false);
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-        fileUploadBox.addEventListener(eventName, unhighlight, false);
-    });
-
-    function highlight(e) {
-        fileUploadBox.classList.add('dragover');
-    }
-
-    function unhighlight(e) {
-        fileUploadBox.classList.remove('dragover');
-    }
-
-    fileUploadBox.addEventListener('drop', handleDrop, false);
-
-    function handleDrop(e) {
-        let dt = e.dataTransfer;
-        let files = dt.files;
-        
-        if (files.length > 0) {
-            fileInput.files = files;
-            updateFileName(files[0].name);
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
         }
-    }
 
-    // File input change handler
-    fileInput.addEventListener('change', function() {
-        if (this.files.length > 0) {
-            updateFileName(this.files[0].name);
-        } else {
-            fileNameDisplay.classList.remove('active');
+        ['dragenter', 'dragover'].forEach(eventName => {
+            fileUploadBox.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            fileUploadBox.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            fileUploadBox.classList.add('dragover');
         }
-    });
 
-    function updateFileName(name) {
-        fileNameDisplay.innerHTML = `<i class='bx bx-file'></i> ${name}`;
-        fileNameDisplay.classList.add('active');
+        function unhighlight(e) {
+            fileUploadBox.classList.remove('dragover');
+        }
+
+        fileUploadBox.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            
+            if (files.length > 0) {
+                fileInput.files = files;
+                updateFileName(files[0].name);
+            }
+        }
+
+        // File input change handler
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                updateFileName(this.files[0].name);
+            } else {
+                fileNameDisplay.classList.remove('active');
+            }
+        });
+
+        function updateFileName(name) {
+            fileNameDisplay.innerHTML = `<i class='bx bx-file'></i> ${name}`;
+            fileNameDisplay.classList.add('active');
+        }
     }
 
     // Form Validation and Submission
-    form.addEventListener('submit', function(e) {
+    form.addEventListener('submit', async function(e) {
         e.preventDefault();
         let isValid = true;
 
@@ -69,11 +71,13 @@ document.addEventListener('DOMContentLoaded', () => {
             group.classList.remove('error');
         });
 
-        // Basic validation
-        const requiredFields = ['fullName', 'email', 'category', 'subject', 'description'];
+        // Basic validation using correct Spanish IDs from index.html
+        const requiredFields = ['fullName', 'email', 'categoria', 'asunto', 'descripcion'];
         
         requiredFields.forEach(fieldId => {
             const field = document.getElementById(fieldId);
+            if (!field) return;
+
             if (!field.value.trim()) {
                 showError(field);
                 isValid = false;
@@ -84,7 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (isValid) {
-            // Simulate API Call / Submission Process
             const submitBtn = document.querySelector('.submit-btn');
             const originalBtnText = submitBtn.innerHTML;
             
@@ -92,28 +95,46 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.style.opacity = '0.8';
             submitBtn.disabled = true;
 
-            setTimeout(() => {
-                // Generate random ticket ID
-                const randomId = Math.floor(Math.random() * 9000) + 1000;
-                document.getElementById('ticketId').textContent = `#TCK-${randomId}`;
+            // Recolectar datos para enviar a Supabase
+            const ticketData = {
+                nombre: document.getElementById('fullName').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                categoria: document.getElementById('categoria').value,
+                prioridad: document.getElementById('prioridad').value,
+                asunto: document.getElementById('asunto').value.trim(),
+                descripcion: document.getElementById('descripcion').value.trim()
+            };
 
-                // Hide form, show success
+            try {
+                // Llamar al nuevo JS encargado de la comunicación con Supabase
+                const ticketCreado = await enviarTicketASupabase(ticketData);
+
+                // Mostrar el ID del ticket insertado (usar ID asignado por Supabase o autogenerado si no viene)
+                const ticketIdParaMostrar = ticketCreado && ticketCreado.id ? `#TCK-${ticketCreado.id}` : `#TCK-${Math.floor(Math.random() * 9000) + 1000}`;
+                document.getElementById('ticketId').textContent = ticketIdParaMostrar;
+
+                // Ocultar formulario, mostrar pantalla de éxito
                 form.style.display = 'none';
-                ticketHeader.style.display = 'none';
+                if (ticketHeader) ticketHeader.style.display = 'none';
                 successMessage.classList.remove('hidden');
 
-                // Reset button for future use
+                form.reset();
+                if (fileNameDisplay) fileNameDisplay.classList.remove('active');
+            } catch (error) {
+                console.error('Error al enviar ticket a Supabase:', error);
+                alert(`Error al enviar el ticket: ${error.message || error}`);
+            } finally {
+                // Restaurar estado del botón
                 submitBtn.innerHTML = originalBtnText;
                 submitBtn.style.opacity = '1';
                 submitBtn.disabled = false;
-                form.reset();
-                fileNameDisplay.classList.remove('active');
-            }, 1500);
+            }
         }
     });
 
     function showError(element) {
         const group = element.closest('.form-group');
+        if (!group) return;
         group.classList.add('error');
         
         // Remove error on input change
@@ -132,6 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
     newTicketBtn.addEventListener('click', () => {
         successMessage.classList.add('hidden');
         form.style.display = 'flex';
-        ticketHeader.style.display = 'block';
+        if (ticketHeader) ticketHeader.style.display = 'block';
     });
 });
