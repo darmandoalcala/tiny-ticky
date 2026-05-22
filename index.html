@@ -96,6 +96,12 @@
                 </div>
             </div>
 
+            <!-- Contenedor para el estado del perfil -->
+            <div id="profileStatusContainer" class="profile-status-container hidden">
+                <i class="profile-status-icon bx"></i>
+                <span id="profileStatusMessage"></span>
+            </div>
+
             <div class="form-row">
                 <div class="form-group">
                     <label for="categoria">Categoría del Problema</label>
@@ -152,6 +158,12 @@
                 <span>Enviar Ticket</span>
                 <i class='bx bx-send'></i>
             </button>
+
+            <!-- Botón de prueba temporal para previsualización offline -->
+            <button type="button" id="testTicketBtn" class="outline-btn test-btn">
+                <span>Testear Ticket (Previsualizar)</span>
+                <i class='bx bx-bug'></i>
+            </button>
         </form>
 
         <div id="successMessage" class="success-message hidden">
@@ -160,12 +172,100 @@
             </div>
             <h2>¡Ticket Creado con Éxito!</h2>
             <p>Tu número de ticket es <strong id="ticketId">#TCK-0000</strong>.</p>
-            <p>Hemos enviado un correo de confirmación con los detalles. Nuestro equipo se pondrá en contacto pronto.
-            </p>
+            <p>Hemos enviado un correo de confirmación con los detalles. Nuestro equipo se pondrá en contacto pronto.</p>
+            
+            <!-- Contenedor para mostrar la imagen del recibo generada -->
+            <div id="receiptImageContainer" class="receipt-image-container hidden">
+                <h3>Tu Recibo de Soporte</h3>
+                <div class="receipt-image-wrapper">
+                    <img id="receiptImage" src="" alt="Recibo de Soporte" class="receipt-img">
+                </div>
+                <button id="downloadReceiptBtn" class="outline-btn secondary-btn">
+                    <i class='bx bx-download'></i> Descargar Recibo PNG
+                </button>
+            </div>
+
+            <!-- HTML EDITABLE DEL RECIBO (Usado para generar la imagen de arriba) -->
+            <!-- Puedes modificar este HTML libremente para cambiar los textos, el diseño y las etiquetas del recibo. -->
+            <div class="receipt-offscreen">
+                <div id="editableReceipt" class="receipt-paper">
+                    <div class="receipt-header">
+                        <h2>ZENTH</h2>
+                        <p>Equipo de TI</p>
+                        <p>--------------------------------</p>
+                    </div>
+                    
+                    <div class="receipt-info">
+                        <p>TICKET: <span id="receiptIdVal">#TCK-ZNTH</span></p>
+                        <p>FECHA: <span id="receiptDateVal">22/05/2026</span></p>
+                        <p>HORA: <span id="receiptTimeVal">17:45</span></p>
+                        <p>ESTADO: ACTIVO / ABIERTO</p>
+                        <p>--------------------------------</p>
+                    </div>
+                    
+                    <div class="receipt-customer">
+                        <p>CLIENTE: <span id="receiptNameVal">JUAN PEREZ</span></p>
+                        <p>EMAIL: <span id="receiptEmailVal">juan@zenth.mx</span></p>
+                        <p>--------------------------------</p>
+                    </div>
+                    
+                    <table class="receipt-table">
+                        <thead>
+                            <tr>
+                                <th>DESCRIPCION</th>
+                                <th class="text-right">ESTADO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>CATEGORIA: <span id="receiptCategoryVal">SOFTWARE</span></td>
+                                <td class="text-right">OK</td>
+                            </tr>
+                            <tr>
+                                <td>PRIORIDAD: <span id="receiptPriorityVal">ALTA</span></td>
+                                <td class="text-right">!!</td>
+                            </tr>
+                            <tr>
+                                <td colspan="2">ASUNTO: <span id="receiptSubjectVal">FALLO EN BD</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div class="receipt-divider">--------------------------------</div>
+                    
+                    <div class="receipt-desc-block">
+                        <p>DETALLE:</p>
+                        <p id="receiptDescVal" class="receipt-desc-text">El sistema no permite realizar consultas...</p>
+                    </div>
+                    
+                    <div class="receipt-divider">--------------------------------</div>
+                    
+                    <div class="receipt-total">
+                        <p class="total-line">TOTAL INCIDENCIAS: <span>1</span></p>
+                        <p class="total-line">IVA: <span>0.00%</span></p>
+                        <p class="total-line main-total">TOTAL: <span>SOPORTE REQUERIDO</span></p>
+                    </div>
+                    
+                    <div class="receipt-divider">--------------------------------</div>
+                    
+                    <div class="receipt-barcode">
+                        <div class="barcode-lines">||||| | |||| ||| || |||| | |||</div>
+                        <p class="barcode-number" id="receiptBarcodeNum">#TCK-12345678</p>
+                    </div>
+                    
+                    <div class="receipt-footer">
+                        <p>*** GRACIAS POR SU VISITA ***</p>
+                        <p>CONSERVE ESTE TICKET</p>
+                    </div>
+                </div>
+            </div>
+
             <button id="newTicketBtn" class="outline-btn">Crear Nuevo Ticket</button>
         </div>
     </main>
 
+    <!-- Librería html2canvas para convertir HTML a Imagen -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- SDK de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Configuración e Integración de Supabase -->

@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 
 :root {
     --bg-color: #0b0f19;
@@ -414,6 +415,306 @@ input[type="file"] {
 .outline-btn:hover {
     background: var(--primary);
     color: white;
+}
+
+/* Profile Status Container */
+.profile-status-container {
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid var(--input-border);
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    animation: slideDown 0.3s ease forwards;
+}
+
+.profile-status-container.hidden {
+    display: none;
+}
+
+.profile-status-container.searching {
+    border-color: var(--secondary);
+    background: rgba(14, 165, 233, 0.05);
+    color: var(--text-muted);
+}
+
+.profile-status-container.exists {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.05);
+    color: var(--text-main);
+}
+
+.profile-status-container.new-profile {
+    border-color: #f59e0b; /* Amber */
+    background: rgba(245, 158, 11, 0.05);
+    color: var(--text-main);
+}
+
+.profile-status-icon {
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-status-container.searching .profile-status-icon {
+    color: var(--secondary);
+}
+
+.profile-status-container.exists .profile-status-icon {
+    color: var(--success);
+}
+
+.profile-status-container.new-profile .profile-status-icon {
+    color: #f59e0b;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+}
+
+/* ==========================================================================
+   Estilos de Recibo Térmico (Supermercado Retro)
+   ========================================================================== */
+
+/* Contenedor offscreen para el renderizado (html2canvas lo lee pero no estorba en la pantalla) */
+.receipt-offscreen {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    width: 320px;
+    z-index: -9999;
+}
+
+/* Papel del recibo térmico */
+.receipt-paper {
+    background: #fcfbf7; /* Blanco hueso / crema térmico */
+    color: #0b0f19; /* Letra oscura intensa */
+    font-family: 'VT323', monospace;
+    font-size: 1.25rem;
+    line-height: 1.2;
+    width: 320px;
+    padding: 35px 22px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    text-align: left;
+    
+    /* Efecto de borde dentado (jagged edges) realista */
+    clip-path: polygon(
+        0% 0%, 2.5% 2%, 5% 0%, 7.5% 2%, 10% 0%, 12.5% 2%, 15% 0%, 17.5% 2%, 20% 0%, 22.5% 2%, 25% 0%, 27.5% 2%, 30% 0%, 32.5% 2%, 35% 0%, 37.5% 2%, 40% 0%, 42.5% 2%, 45% 0%, 47.5% 2%, 50% 0%, 52.5% 2%, 55% 0%, 57.5% 2%, 60% 0%, 62.5% 2%, 65% 0%, 67.5% 2%, 70% 0%, 72.5% 2%, 75% 0%, 77.5% 2%, 80% 0%, 82.5% 2%, 85% 0%, 87.5% 2%, 90% 0%, 92.5% 2%, 95% 0%, 97.5% 2%, 100% 0%,
+        100% 100%, 97.5% 98%, 95% 100%, 92.5% 98%, 90% 100%, 87.5% 98%, 85% 100%, 82.5% 98%, 80% 100%, 77.5% 98%, 75% 100%, 72.5% 98%, 70% 100%, 67.5% 98%, 65% 100%, 62.5% 98%, 60% 100%, 57.5% 98%, 55% 100%, 52.5% 98%, 50% 100%, 47.5% 98%, 45% 100%, 42.5% 98%, 40% 100%, 37.5% 98%, 35% 100%, 32.5% 98%, 30% 100%, 27.5% 98%, 25% 100%, 22.5% 98%, 20% 100%, 17.5% 98%, 15% 100%, 12.5% 98%, 10% 100%, 7.5% 98%, 5% 100%, 2.5% 98%, 0% 100%
+    );
+}
+
+.receipt-header {
+    text-align: center;
+    margin-bottom: 0.5rem;
+}
+
+.receipt-header h2 {
+    font-size: 2.1rem;
+    font-weight: 700;
+    margin-bottom: 0.1rem;
+    color: #0b0f19;
+    letter-spacing: 1px;
+}
+
+.receipt-header p {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #222;
+}
+
+.receipt-info p, .receipt-customer p {
+    margin: 0.1rem 0;
+    font-size: 1.15rem;
+}
+
+.receipt-customer {
+    margin-bottom: 0.4rem;
+}
+
+.receipt-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.3rem 0;
+    font-size: 1.15rem;
+}
+
+.receipt-table th {
+    text-align: left;
+    border-bottom: 1px dashed #222;
+    padding-bottom: 0.2rem;
+    font-weight: bold;
+}
+
+.receipt-table td {
+    padding: 0.2rem 0;
+    vertical-align: top;
+    word-break: break-all;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.receipt-divider {
+    text-align: center;
+    letter-spacing: -1px;
+    margin: 0.2rem 0;
+    color: #222;
+}
+
+.receipt-desc-block {
+    margin: 0.2rem 0;
+}
+
+.receipt-desc-text {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 1.1rem;
+    background: rgba(0, 0, 0, 0.03);
+    padding: 0.4rem;
+    border-radius: 4px;
+    border: 1px dashed rgba(0, 0, 0, 0.1);
+}
+
+.receipt-total {
+    margin: 0.4rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.total-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1.2rem;
+}
+
+.main-total {
+    font-size: 1.4rem;
+    font-weight: 700;
+    border-top: 1px dashed #000;
+    padding-top: 0.3rem;
+    margin-top: 0.2rem;
+}
+
+.receipt-barcode {
+    text-align: center;
+    margin: 0.8rem 0 0.4rem 0;
+}
+
+.barcode-lines {
+    font-size: 1.6rem;
+    letter-spacing: 0px;
+    line-height: 1;
+    user-select: none;
+    font-family: monospace;
+    font-weight: 100;
+}
+
+.barcode-number {
+    font-size: 1rem;
+    margin-top: 0.2rem;
+    letter-spacing: 1px;
+}
+
+.receipt-footer {
+    text-align: center;
+    margin-top: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.receipt-footer p {
+    margin: 0.1rem 0;
+}
+
+/* Contenedor de visualización del recibo final */
+.receipt-image-container {
+    margin: 2.5rem auto;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    max-width: 380px;
+    text-align: center;
+    animation: fadeIn 0.5s ease;
+}
+
+.receipt-image-container h3 {
+    font-size: 1.2rem;
+    color: var(--text-main);
+    margin-bottom: 1rem;
+}
+
+.receipt-image-wrapper {
+    background: #111827;
+    padding: 1.5rem;
+    border-radius: 14px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
+    margin-bottom: 1rem;
+}
+
+.receipt-img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4));
+}
+
+.secondary-btn {
+    background: transparent;
+    border: 1px solid var(--secondary) !important;
+    color: var(--secondary) !important;
+    box-shadow: 0 4px 10px rgba(14, 165, 233, 0.15) !important;
+}
+
+.secondary-btn:hover {
+    background: var(--secondary) !important;
+    color: white !important;
+    box-shadow: 0 6px 20px rgba(14, 165, 233, 0.3) !important;
+}
+
+.test-btn {
+    width: 100%;
+    margin-top: 0.8rem;
+    border: 1px dashed #f59e0b !important; /* Amber border */
+    color: #f59e0b !important;
+    background: transparent;
+    padding: 1.1rem;
+    border-radius: 12px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.8rem;
+    transition: all 0.3s ease;
+}
+
+.test-btn:hover {
+    background: rgba(245, 158, 11, 0.08) !important;
+    border-style: solid !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+.test-btn:active {
+    transform: translateY(0);
 }
 
 /* Responsive */
