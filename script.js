@@ -1,8 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('ticketForm');
-    const fileInput = document.getElementById('attachment');
-    const fileUploadBox = document.querySelector('.file-upload-box');
-    const fileNameDisplay = document.getElementById('fileName');
     const successMessage = document.getElementById('successMessage');
     const newTicketBtn = document.getElementById('newTicketBtn');
     const testTicketBtn = document.getElementById('testTicketBtn');
@@ -23,87 +20,29 @@ document.addEventListener('DOMContentLoaded', () => {
     let debounceTimeout = null;
     let profileExists = false;
 
-    // Drag and drop functionality for file upload (only active if components exist in HTML)
-    if (fileUploadBox && fileInput && fileNameDisplay) {
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            fileUploadBox.addEventListener(eventName, preventDefaults, false);
-        });
 
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            fileUploadBox.addEventListener(eventName, highlight, false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            fileUploadBox.addEventListener(eventName, unhighlight, false);
-        });
-
-        function highlight(e) {
-            fileUploadBox.classList.add('dragover');
-        }
-
-        function unhighlight(e) {
-            fileUploadBox.classList.remove('dragover');
-        }
-
-        fileUploadBox.addEventListener('drop', handleDrop, false);
-
-        function handleDrop(e) {
-            let dt = e.dataTransfer;
-            let files = dt.files;
-            
-            if (files.length > 0) {
-                fileInput.files = files;
-                updateFileName(files[0].name);
-            }
-        }
-
-        // File input change handler
-        fileInput.addEventListener('change', function() {
-            if (this.files.length > 0) {
-                updateFileName(this.files[0].name);
-            } else {
-                fileNameDisplay.classList.remove('active');
-            }
-        });
-
-        function updateFileName(name) {
-            fileNameDisplay.innerHTML = `<i class='bx bx-file'></i> ${name}`;
-            fileNameDisplay.classList.add('active');
-        }
-    }
-
-    // Lógica para verificar el perfil del usuario de forma dinámica
-    async function chequearPerfil() {
+    async function checkProfile() {
         if (!nameInput || !emailInput || !statusContainer) return;
 
-        const nombreVal = nameInput.value.trim();
+        const nameVal = nameInput.value.trim();
         const emailVal = emailInput.value.trim();
 
-        // Limpiar el estado de existencia previo
         profileExists = false;
 
-        const esEmailValido = validateEmail(emailVal);
-        const tieneNombreValido = nombreVal.length >= 3;
-
-        // Si no hay suficiente información, ocultamos el contenedor
-        if (!tieneNombreValido && !esEmailValido) {
+        const validEmail = validateEmail(emailVal);
+        const validName = nameVal.length >= 3;
+        if (!validName && !validEmail) {
             statusContainer.classList.add('hidden');
             return;
         }
 
-        // Mostrar estado de carga
         statusContainer.classList.remove('hidden', 'exists', 'new-profile');
         statusContainer.classList.add('searching');
         if (statusIcon) statusIcon.className = 'profile-status-icon bx bx-loader-alt bx-spin';
         if (statusMessage) statusMessage.textContent = 'Buscando perfil de usuario...';
 
         try {
-            const res = await buscarPerfilPorNombreOCorreo(nombreVal || null, emailVal || null);
+            const res = await searchProfileByNameOrEmail(nameVal || null, emailVal || null);
 
             if (res && res.profile) {
                 profileExists = true;
@@ -124,7 +63,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error al buscar perfil:', error);
-            // Fallback gracioso ante problemas de conexión o base de datos no configurada aún
             profileExists = false;
             statusContainer.classList.remove('searching', 'exists');
             statusContainer.classList.add('new-profile');
@@ -139,96 +77,144 @@ document.addEventListener('DOMContentLoaded', () => {
         if (debounceTimeout) {
             clearTimeout(debounceTimeout);
         }
-        debounceTimeout = setTimeout(chequearPerfil, 600);
+        debounceTimeout = setTimeout(checkProfile, 600);
     }
 
     // Registrar eventos para la búsqueda en tiempo real
     if (nameInput && emailInput) {
         nameInput.addEventListener('input', triggerDebounceCheck);
         emailInput.addEventListener('input', triggerDebounceCheck);
-        nameInput.addEventListener('blur', chequearPerfil);
-        emailInput.addEventListener('blur', chequearPerfil);
+        nameInput.addEventListener('blur', checkProfile);
+        emailInput.addEventListener('blur', checkProfile);
     }
 
     /**
-     * Llena dinámicamente el recibo HTML y lo convierte en una imagen PNG usando html2canvas.
-     * @param {Object} ticketData - Los datos del ticket.
-     * @param {string} ticketId - El identificador del ticket (ej: #TCK-1234).
+     * Llena dinámicamente el recibo HTML y lo convierte en una imagen PNG usando canvas
+     * @param {Object} ticketData - ticket data
+     * @param {string} ticketId - ticket id
      */
-    async function generarReciboImagen(ticketData, ticketId) {
+    async function generateReceiptImage(ticketData, ticketId) {
         if (!receiptImageContainer || !receiptImage) return;
 
-        // 1. Rellenar los valores en el HTML editable
-        const idValElement = document.getElementById('receiptIdVal');
-        if (idValElement) idValElement.textContent = ticketId;
-        
-        // Obtener fecha y hora actuales en formato mexicano (24h)
+        // 1. Obtener fecha y hora actuales en formato de 24h
         const ahora = new Date();
         const fechaStr = ahora.toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' });
         const horaStr = ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
         
-        const dateValElement = document.getElementById('receiptDateVal');
-        const timeValElement = document.getElementById('receiptTimeVal');
-        if (dateValElement) dateValElement.textContent = fechaStr;
-        if (timeValElement) timeValElement.textContent = horaStr;
-        
-        const nameValElement = document.getElementById('receiptNameVal');
-        const emailValElement = document.getElementById('receiptEmailVal');
-        if (nameValElement) nameValElement.textContent = ticketData.nombre.toUpperCase();
-        if (emailValElement) emailValElement.textContent = ticketData.email.toUpperCase();
-        
-        // Mapear categorías a su etiqueta en el recibo
+        // 2. Mapear categorías a su etiqueta
         const catMap = {
             'equipo-computo': 'EQUIPO DE COMPUTO',
             'software': 'SOFTWARE / ACCESO',
             'internet': 'RED / INTERNET',
-            'celular': 'TELEFONIA / MOVIL',
+            'celular': 'TELEFONO / CELULAR',
             'cuenta': 'ACCESO / CUENTA',
+            'impresora': 'IMPRESORA',
             'otro': 'OTRA CATEGORIA'
         };
         const catLabel = catMap[ticketData.categoria] || ticketData.categoria.toUpperCase();
         
-        const catValElement = document.getElementById('receiptCategoryVal');
-        const prioValElement = document.getElementById('receiptPriorityVal');
-        const subValElement = document.getElementById('receiptSubjectVal');
-        if (catValElement) catValElement.textContent = catLabel;
-        if (prioValElement) prioValElement.textContent = ticketData.prioridad.toUpperCase();
-        if (subValElement) subValElement.textContent = ticketData.asunto.toUpperCase();
+        const agentMap = {
+            'equipo-computo': 'CARLOS RUIZ (HARDWARE)',
+            'software': 'SOFIA MORALES (SOFTWARE)',
+            'internet': 'JORGE GOMEZ (REDES)',
+            'celular': 'DIANA PEREZ (MOVIL)',
+            'cuenta': 'MIGUEL ANGEL (ACCESOS)',
+            'otro': 'AGENTE GENERAL'
+        };
+        const agentName = agentMap[ticketData.categoria] || 'AGENTE GENERAL';
         
-        // Formatear y cortar descripción
+        // 4. Formatear y cortar descripción
         let descCorta = ticketData.descripcion;
         if (descCorta.length > 150) {
             descCorta = descCorta.substring(0, 147) + '...';
         }
-        const descValElement = document.getElementById('receiptDescVal');
-        if (descValElement) descValElement.textContent = descCorta.toUpperCase();
-        
-        // Código de barras simulado
-        const barcodeNum = ticketId.replace('#', '') + '-' + Math.floor(Math.random() * 90000 + 10000);
-        const barcodeElement = document.getElementById('receiptBarcodeNum');
-        if (barcodeElement) barcodeElement.textContent = barcodeNum;
 
-        // 2. Esperar a que las fuentes se carguen correctamente
+        // 5. Construir la plantilla HTML dinámica del recibo
+        const receiptHtml = `
+            <div id="editableReceipt" class="receipt-paper">
+                <div class="receipt-header">
+                    <h2>ZENTH</h2>
+                    <p>Equipo de TI</p>
+                    <p>--------------------------------</p>
+                </div>
+                
+                <div class="receipt-info">
+                    <p>TICKET: <span>${ticketId}</span></p>
+                    <p>FECHA: <span>${fechaStr}</span></p>
+                    <p>HORA: <span>${horaStr}</span></p>
+                    <p>ESTADO: ACTIVO / ABIERTO</p>
+                    <p>--------------------------------</p>
+                </div>
+                
+                <div class="receipt-customer">
+                    <p>CLIENTE: <span>${ticketData.nombre.toUpperCase()}</span></p>
+                    <p>EMAIL: <span>${ticketData.email.toUpperCase()}</span></p>
+                    <p>--------------------------------</p>
+                </div>
+                
+                <table class="receipt-table">
+                    <thead>
+                        <tr>
+                            <th>DESCRIPCION</th>
+                            <th class="text-right">ESTADO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>CATEGORIA: <span>${catLabel}</span></td>
+                            <td class="text-right">OK</td>
+                        </tr>
+                        <tr>
+                            <td>PRIORIDAD: <span>${ticketData.prioridad.toUpperCase()}</span></td>
+                            <td class="text-right">!!</td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">ASUNTO: <span>${ticketData.asunto.toUpperCase()}</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="receipt-divider"></div>
+                
+                <div class="receipt-desc-block">
+                    <p>DETALLE:</p>
+                    <p class="receipt-desc-text">${descCorta.toUpperCase()}</p>
+                </div>
+                
+                <div class="receipt-divider"></div>
+                
+                <div class="receipt-footer">
+                    <p>TICKET ASIGNADO A:</p>
+                    <p class="receipt-agent-assigned"><strong>${agentName}</strong></p>
+                    <p>*** GRACIAS POR REPORTAR ***</p>
+                </div>
+            </div>
+        `;
+
+        //Crear un contenedor temporal
+        const tempContainer = document.createElement('div');
+        tempContainer.className = 'receipt-offscreen';
+        tempContainer.innerHTML = receiptHtml;
+        document.body.appendChild(tempContainer);
         await document.fonts.ready;
 
-        // 3. Renderizar el elemento #editableReceipt a imagen usando html2canvas
-        const editableReceipt = document.getElementById('editableReceipt');
+        const editableReceipt = tempContainer.querySelector('#editableReceipt');
         if (editableReceipt) {
             try {
                 const canvas = await html2canvas(editableReceipt, {
                     backgroundColor: null,
-                    scale: 2, // Escala 2x para un renderizado HD super nítido de la tipografía VT323
+                    scale: 2, // Calidad x2 para la tipografía
                     logging: false,
                     useCORS: true
                 });
 
                 const imgData = canvas.toDataURL('image/png');
                 
-                // Mostrar la imagen en el contenedor de éxito
+                // Cargar imagen en la vista del usuario
                 receiptImage.src = imgData;
                 receiptImageContainer.classList.remove('hidden');
 
-                // 4. Configurar el botón de descarga del PNG
+                // 9. Configurar botón de descarga
                 if (downloadReceiptBtn) {
                     const newDownloadBtn = downloadReceiptBtn.cloneNode(true);
                     downloadReceiptBtn.parentNode.replaceChild(newDownloadBtn, downloadReceiptBtn);
@@ -242,21 +228,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (canvasError) {
                 console.error('Error al generar la imagen del recibo:', canvasError);
+            } finally {
+                // 10. Limpiar el DOM eliminando el contenedor temporal offscreen
+                if (tempContainer.parentNode) {
+                    tempContainer.parentNode.removeChild(tempContainer);
+                }
             }
         }
     }
 
-    // Form Validation and Submission
+    // Validación y subida
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         let isValid = true;
 
-        // Reset previous errors
+        // Quitar errores
         document.querySelectorAll('.form-group').forEach(group => {
             group.classList.remove('error');
         });
 
-        // Basic validation using correct Spanish IDs from index.html
+        // Validación básica
         const requiredFields = ['fullName', 'email', 'categoria', 'asunto', 'descripcion'];
         
         requiredFields.forEach(fieldId => {
@@ -294,17 +285,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Si el perfil no existe, crearlo antes de enviar el ticket
                 if (!profileExists) {
                     try {
-                        await crearPerfilSiNoExiste(ticketData.nombre, ticketData.email);
+                        await createProfileIfDoesNotExist(ticketData.nombre, ticketData.email);
                         profileExists = true;
                     } catch (profileError) {
                         console.warn('No se pudo crear el perfil, continuando con el ticket:', profileError);
                     }
                 }
 
-                // Llamar al nuevo JS encargado de la comunicación con Supabase
-                const ticketCreado = await enviarTicketASupabase(ticketData);
+                // Llamar al nuevo JS encargado de la comunicación con la base de datos
+                const ticketCreado = await sendTicketToDB(ticketData);
 
-                // Mostrar el ID del ticket insertado (usar ID asignado por Supabase o autogenerado si no viene)
+                // Mostrar el ID del ticket insertado (usar ID asignado por la base de datos)
                 const ticketIdParaMostrar = ticketCreado && ticketCreado.id ? `#TCK-${ticketCreado.id}` : `#TCK-${Math.floor(Math.random() * 9000) + 1000}`;
                 document.getElementById('ticketId').textContent = ticketIdParaMostrar;
 
@@ -314,8 +305,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (statusContainer) statusContainer.classList.add('hidden');
                 successMessage.classList.remove('hidden');
 
-                // Generar dinámicamente la imagen del recibo retro de supermercado
-                await generarReciboImagen(ticketData, ticketIdParaMostrar);
+                // Generar dinámicamente la imagen del recibo
+                await generateReceiptImage(ticketData, ticketIdParaMostrar);
 
                 form.reset();
                 if (fileNameDisplay) fileNameDisplay.classList.remove('active');
@@ -331,7 +322,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Lógica para testear y previsualizar el recibo sin enviar a Supabase
+    // DEBUG
+    // ---- test sin enviar a DB ----
     if (testTicketBtn) {
         testTicketBtn.addEventListener('click', async function() {
             let isValid = true;
@@ -373,18 +365,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 try {
-                    // Simular éxito y número de ticket
+                    // Simular éxito
                     const ticketIdFalso = `#TCK-TEST-${Math.floor(Math.random() * 9000) + 1000}`;
                     document.getElementById('ticketId').textContent = ticketIdFalso;
 
-                    // Ocultar formulario, mostrar pantalla de éxito
+                    // Ocultar formulario y mostrar pantalla de éxito
                     form.style.display = 'none';
                     if (ticketHeader) ticketHeader.style.display = 'none';
                     if (statusContainer) statusContainer.classList.add('hidden');
                     successMessage.classList.remove('hidden');
 
                     // Generar recibo de manera directa sin insertar en base de datos
-                    await generarReciboImagen(ticketData, ticketIdFalso);
+                    await generateReceiptImage(ticketData, ticketIdFalso);
 
                     form.reset();
                     if (fileNameDisplay) fileNameDisplay.classList.remove('active');

@@ -477,8 +477,6 @@ input[type="file"] {
     to { opacity: 1; transform: translateY(0); }
 }
 
-}
-
 /* ==========================================================================
    Estilos de Recibo Térmico (Supermercado Retro)
    ========================================================================== */
@@ -488,7 +486,7 @@ input[type="file"] {
     position: absolute;
     left: -9999px;
     top: -9999px;
-    width: 320px;
+    width: 380px;
     z-index: -9999;
 }
 
@@ -497,10 +495,10 @@ input[type="file"] {
     background: #fcfbf7; /* Blanco hueso / crema térmico */
     color: #0b0f19; /* Letra oscura intensa */
     font-family: 'VT323', monospace;
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     line-height: 1.2;
-    width: 320px;
-    padding: 35px 22px;
+    width: 380px;
+    padding: 25px 20px;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
     box-sizing: border-box;
     display: flex;
@@ -639,6 +637,25 @@ input[type="file"] {
     margin: 0.1rem 0;
 }
 
+.receipt-agent-assigned {
+    font-size: 1.45rem;
+    font-weight: bold;
+    color: #0b0f19;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    margin: 0.2rem 0;
+    display: inline-block;
+    letter-spacing: 0.5px;
+}
+
+.receipt-divider {
+    border-bottom: 1.5px dashed #222;
+    margin: 0.5rem 0;
+    height: 0;
+    overflow: hidden;
+}
+
 /* Contenedor de visualización del recibo final */
 .receipt-image-container {
     margin: 2.5rem auto;
@@ -646,7 +663,7 @@ input[type="file"] {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--card-border);
     border-radius: 20px;
-    max-width: 380px;
+    max-width: 440px;
     text-align: center;
     animation: fadeIn 0.5s ease;
 }

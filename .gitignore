@@ -1,0 +1,10 @@
+# Variables de entorno locales
+env.js
+.env
+.env.local
+.vercel
+
+# Módulos y empaquetadores
+node_modules/
+dist/
+build/
