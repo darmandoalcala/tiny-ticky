@@ -19,6 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let debounceTimeout = null;
     let profileExists = false;
+    let currentUserId = null;
+    let isAutofilling = false;
 
 
     async function checkProfile() {
@@ -28,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const emailVal = emailInput.value.trim();
 
         profileExists = false;
+        currentUserId = null;
 
         const validEmail = validateEmail(emailVal);
         const validName = nameVal.length >= 3;
@@ -46,14 +49,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (res && res.profile) {
                 profileExists = true;
+                currentUserId = res.profile.id;
                 statusContainer.classList.remove('searching', 'new-profile');
                 statusContainer.classList.add('exists');
                 if (statusIcon) statusIcon.className = 'profile-status-icon bx bx-user-check';
                 if (statusMessage) {
-                    statusMessage.innerHTML = `¡Perfil encontrado! Vincularemos tu ticket al perfil de <strong>${res.profile.nombre || nombreVal}</strong> (${res.profile.email || emailVal}).`;
+                    statusMessage.innerHTML = `¡Perfil encontrado! Vincularemos tu ticket al perfil de <strong>${res.profile.nombre_completo || nameVal}</strong> (${res.profile.correo || emailVal}).`;
                 }
+
+                // Autocompletado cruzado inteligente (Evita bucles infinitos con isAutofilling)
+                isAutofilling = true;
+                if (res.profile.nombre_completo && nameInput.value !== res.profile.nombre_completo) {
+                    nameInput.value = res.profile.nombre_completo;
+                }
+                if (res.profile.correo && emailInput.value !== res.profile.correo) {
+                    emailInput.value = res.profile.correo;
+                }
+                isAutofilling = false;
             } else {
                 profileExists = false;
+                currentUserId = null;
                 statusContainer.classList.remove('searching', 'exists');
                 statusContainer.classList.add('new-profile');
                 if (statusIcon) statusIcon.className = 'profile-status-icon bx bx-user-plus';
@@ -64,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error al buscar perfil:', error);
             profileExists = false;
+            currentUserId = null;
             statusContainer.classList.remove('searching', 'exists');
             statusContainer.classList.add('new-profile');
             if (statusIcon) statusIcon.className = 'profile-status-icon bx bx-info-circle';
@@ -72,6 +88,114 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+
+    let suggestionsTimeout = null;
+
+    function handleInputModification(e) {
+        if (isAutofilling) return;
+
+        // Limpiar desplegables previos al escribir
+        clearSuggestionsDropdown();
+
+        if (profileExists) {
+            // El usuario modificó un campo después de haber encontrado un perfil: limpiamos ambos campos
+            isAutofilling = true;
+            const targetInput = e.target;
+            
+            nameInput.value = "";
+            emailInput.value = "";
+            
+            profileExists = false;
+            currentUserId = null;
+            
+            if (statusContainer) {
+                statusContainer.classList.add('hidden');
+                statusContainer.classList.remove('exists', 'searching', 'new-profile');
+            }
+            
+            isAutofilling = false;
+            
+            // Devolver el foco al campo que se modificó
+            setTimeout(() => {
+                targetInput.focus();
+            }, 0);
+            return;
+        }
+
+        // Búsqueda habitual si no hay perfil pre-cargado
+        triggerDebounceCheck();
+
+        // Obtener sugerencias en tiempo real
+        const queryVal = e.target.value.trim();
+        if (queryVal.length >= 2) {
+            if (suggestionsTimeout) clearTimeout(suggestionsTimeout);
+            suggestionsTimeout = setTimeout(async () => {
+                if (typeof searchMatchingUsers === 'function') {
+                    const matches = await searchMatchingUsers(queryVal);
+                    showSuggestionsDropdown(e.target, matches);
+                }
+            }, 250);
+        }
+    }
+
+    function showSuggestionsDropdown(inputElement, matches) {
+        clearSuggestionsDropdown();
+        if (!matches || matches.length === 0) return;
+
+        const wrapper = inputElement.closest('.input-wrapper');
+        if (!wrapper) return;
+
+        const container = document.createElement('div');
+        container.className = 'autocomplete-suggestions';
+
+        matches.forEach(user => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-suggestion';
+            item.innerHTML = `
+                <span class="suggestion-name">${user.nombre_completo}</span>
+                <span class="suggestion-email">${user.correo}</span>
+            `;
+
+            item.addEventListener('click', (clickEvent) => {
+                clickEvent.stopPropagation(); // Prevenir cierre inmediato al hacer clic en la opción
+
+                isAutofilling = true;
+                nameInput.value = user.nombre_completo;
+                emailInput.value = user.correo;
+                isAutofilling = false;
+
+                profileExists = true;
+                currentUserId = user.id;
+
+                if (statusContainer) {
+                    statusContainer.classList.remove('hidden', 'searching', 'new-profile');
+                    statusContainer.classList.add('exists');
+                    if (statusIcon) statusIcon.className = 'profile-status-icon bx bx-user-check';
+                    if (statusMessage) {
+                        statusMessage.innerHTML = `¡Perfil encontrado! Vincularemos tu ticket al perfil de <strong>${user.nombre_completo}</strong> (${user.correo}).`;
+                    }
+                }
+
+                clearSuggestionsDropdown();
+            });
+
+            container.appendChild(item);
+        });
+
+        wrapper.appendChild(container);
+    }
+
+    function clearSuggestionsDropdown() {
+        const existing = document.querySelectorAll('.autocomplete-suggestions');
+        existing.forEach(el => el.parentNode.removeChild(el));
+    }
+
+    // Cerrar sugerencias si se hace clic fuera del wrapper del input
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.input-wrapper')) {
+            clearSuggestionsDropdown();
+        }
+    });
 
     function triggerDebounceCheck() {
         if (debounceTimeout) {
@@ -82,8 +206,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Registrar eventos para la búsqueda en tiempo real
     if (nameInput && emailInput) {
-        nameInput.addEventListener('input', triggerDebounceCheck);
-        emailInput.addEventListener('input', triggerDebounceCheck);
+        nameInput.addEventListener('input', handleInputModification);
+        emailInput.addEventListener('input', handleInputModification);
         nameInput.addEventListener('blur', checkProfile);
         emailInput.addEventListener('blur', checkProfile);
     }
@@ -112,16 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'otro': 'OTRA CATEGORIA'
         };
         const catLabel = catMap[ticketData.categoria] || ticketData.categoria.toUpperCase();
-        
-        const agentMap = {
-            'equipo-computo': 'CARLOS RUIZ (HARDWARE)',
-            'software': 'SOFIA MORALES (SOFTWARE)',
-            'internet': 'JORGE GOMEZ (REDES)',
-            'celular': 'DIANA PEREZ (MOVIL)',
-            'cuenta': 'MIGUEL ANGEL (ACCESOS)',
-            'otro': 'AGENTE GENERAL'
-        };
-        const agentName = agentMap[ticketData.categoria] || 'AGENTE GENERAL';
+        const agentName = (ticketData.asignado_a || 'AGENTE GENERAL').toUpperCase();
         
         // 4. Formatear y cortar descripción
         let descCorta = ticketData.descripcion;
@@ -237,6 +352,48 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Función para asignar al responsable del ticket.
+     * 
+     * @param {Object} ticketData - ticket data
+     * @returns {Promise<void>}
+     */
+    async function asignarResponsableTicket(ticketData) {
+        try {
+            // Intentar obtener el agente dinámicamente desde Supabase usando la categoría
+            if (typeof getAgentBySkill === 'function') {
+                const agente = await getAgentBySkill(ticketData.categoria);
+                if (agente && agente.nombre_completo) {
+                    ticketData.agente_id = agente.id;
+                    ticketData.asignado_a = agente.nombre_completo; // Para mostrar en el recibo
+                    console.log(`Asignación Automática de Base de Datos: ${agente.nombre_completo} (Skill: ${ticketData.categoria})`);
+                    return;
+                }
+
+                // Si no hay agente con la skill correspondiente, sortear entre los que tienen skill NULL
+                if (typeof getAgentsWithNullSkill === 'function') {
+                    const agentesComunes = await getAgentsWithNullSkill();
+                    if (agentesComunes && agentesComunes.length > 0) {
+                        const indiceAzar = Math.floor(Math.random() * agentesComunes.length);
+                        const agenteSorteado = agentesComunes[indiceAzar];
+                        
+                        ticketData.agente_id = agenteSorteado.id;
+                        ticketData.asignado_a = agenteSorteado.nombre_completo; // Para mostrar en el recibo
+                        console.log(`Sorteo entre Agentes sin Skill (NULL): ${agenteSorteado.nombre_completo}`);
+                        return;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('No se pudo consultar la asignación de agente en la base de datos:', e);
+        }
+
+        // Si no hay agentes o falla la asignación de base de datos, queda sin asignar
+        ticketData.agente_id = null;
+        ticketData.asignado_a = 'SIN ASIGNAR';
+        console.log('El ticket se creará sin agente asignado.');
+    }
+
     // Validación y subida
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -282,15 +439,30 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             try {
-                // Si el perfil no existe, crearlo antes de enviar el ticket
-                if (!profileExists) {
+                // Buscar o crear el usuario en la base de datos para obtener el usuario_id
+                if (!currentUserId) {
                     try {
-                        await createProfileIfDoesNotExist(ticketData.nombre, ticketData.email);
-                        profileExists = true;
+                        const res = await searchProfileByNameOrEmail(ticketData.nombre, ticketData.email);
+                        if (res && res.profile) {
+                            currentUserId = res.profile.id;
+                            profileExists = true;
+                        } else {
+                            const nuevoUsuario = await createProfileIfDoesNotExist(ticketData.nombre, ticketData.email);
+                            if (nuevoUsuario && nuevoUsuario.id) {
+                                currentUserId = nuevoUsuario.id;
+                                profileExists = true;
+                            }
+                        }
                     } catch (profileError) {
-                        console.warn('No se pudo crear el perfil, continuando con el ticket:', profileError);
+                        console.warn('Error al verificar/crear el perfil del usuario:', profileError);
                     }
                 }
+
+                // Asignar el usuario_id obtenido a los datos del ticket
+                ticketData.usuario_id = currentUserId;
+
+                // Llamar a la función para asignar el responsable del ticket (vacía por el momento)
+                await asignarResponsableTicket(ticketData);
 
                 // Llamar al nuevo JS encargado de la comunicación con la base de datos
                 const ticketCreado = await sendTicketToDB(ticketData);
@@ -365,6 +537,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 try {
+                    // Llamar a la función de asignación para que también se pueda probar en previsualización
+                    await asignarResponsableTicket(ticketData);
+
                     // Simular éxito
                     const ticketIdFalso = `#TCK-TEST-${Math.floor(Math.random() * 9000) + 1000}`;
                     document.getElementById('ticketId').textContent = ticketIdFalso;

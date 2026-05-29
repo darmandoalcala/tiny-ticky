@@ -749,3 +749,57 @@ input[type="file"] {
         font-size: 1.8rem;
     }
 }
+
+/* ==========================================================================
+   Estilos de Autocompletado / Sugerencias Desplegables
+   ========================================================================== */
+.autocomplete-suggestions {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    border-radius: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 12px var(--primary-glow);
+    animation: fadeInSuggestions 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInSuggestions {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.autocomplete-suggestion {
+    padding: 0.8rem 1.2rem;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.autocomplete-suggestion:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-suggestion:hover {
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.autocomplete-suggestion .suggestion-name {
+    font-weight: 600;
+    color: var(--text-main);
+    font-size: 0.95rem;
+}
+
+.autocomplete-suggestion .suggestion-email {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}

@@ -116,14 +116,12 @@ async function sendTicketToDB(ticketData) {
         .from('tickets')
         .insert([
             {
-                nombre: ticketData.nombre,
-                email: ticketData.email,
-                categoria: ticketData.categoria,
-                prioridad: ticketData.prioridad,
+                usuario_id: ticketData.usuario_id || null,
                 asunto: ticketData.asunto,
-                descripcion: ticketData.descripcion,
-                fecha_creacion: new Date().toISOString(),
-                estado: 'abierto'
+                prioridad: ticketData.prioridad,
+                cuerpo: ticketData.descripcion,
+                estado: 'abierto',
+                agente_id: ticketData.agente_id || null
             }
         ])
         .select();
@@ -152,69 +150,25 @@ async function searchProfileByNameOrEmail(nombre, email) {
     }
 
     const filters = [];
-    if (nombre) filters.push(`nombre.eq.${nombre}`);
-    if (email) filters.push(`email.eq.${email}`);
+    if (nombre) filters.push(`nombre_completo.eq.${nombre}`);
+    if (email) filters.push(`correo.eq.${email}`);
 
     if (filters.length === 0) return null;
 
     const orFilter = filters.join(',');
 
-    // 1. Intentar con la tabla 'perfiles'
     try {
         const { data, error } = await dbClient
-            .from('perfiles')
+            .from('usuarios')
             .select('*')
             .or(orFilter)
             .limit(1);
         
         if (!error && data && data.length > 0) {
-            return { profile: data[0], table: 'perfiles' };
-        }
-        if (error && error.code !== 'PGRST116' && !error.message.includes('relation "public.perfiles" does not exist')) {
-            console.warn('Error al buscar en la tabla perfiles, intentando con profiles...', error);
+            return { profile: data[0], table: 'usuarios' };
         }
     } catch (e) {
-        console.warn('Excepción al buscar en perfiles:', e);
-    }
-
-    // 2. Fallback: Intentar con la tabla 'profiles'
-    try {
-        const { data, error } = await dbClient
-            .from('profiles')
-            .select('*')
-            .or(orFilter)
-            .limit(1);
-        
-        if (!error && data && data.length > 0) {
-            return { profile: data[0], table: 'profiles' };
-        }
-        if (error && error.code !== 'PGRST116' && !error.message.includes('relation "public.profiles" does not exist')) {
-            console.warn('Error al buscar en la tabla profiles, intentando con tickets...', error);
-        }
-    } catch (e) {
-        console.warn('Excepción al buscar en profiles:', e);
-    }
-
-    // 3. Fallback: Intentar con la tabla 'tickets' (para ver si ya han enviado tickets antes)
-    try {
-        const { data, error } = await dbClient
-            .from('tickets')
-            .select('*')
-            .or(orFilter)
-            .order('fecha_creacion', { ascending: false })
-            .limit(1);
-        
-        if (!error && data && data.length > 0) {
-            return { 
-                profile: { 
-                    nombre: data[0].nombre, 
-                    email: data[0].email 
-                }, 
-                table: 'tickets' 
-            };
-        }
-    } catch (e) {
-        console.warn('Excepción al buscar en la tabla tickets:', e);
+        console.warn('Excepción al buscar en la tabla usuarios:', e);
     }
 
     return null;
@@ -229,42 +183,119 @@ async function searchProfileByNameOrEmail(nombre, email) {
 async function createProfileIfDoesNotExist(nombre, email) {
     if (!dbClient) return null;
 
-    const perfilData = {
-        nombre: nombre,
-        email: email,
-        fecha_creacion: new Date().toISOString()
+    const usuarioData = {
+        nombre_completo: nombre,
+        correo: email
     };
 
-    // 1. Intentar insertar en 'perfiles'
     try {
         const { data, error } = await dbClient
-            .from('perfiles')
-            .insert([perfilData])
+            .from('usuarios')
+            .insert([usuarioData])
             .select();
         
         if (!error && data && data.length > 0) {
-            console.log('Perfil creado exitosamente en tabla perfiles.');
+            console.log('Usuario creado exitosamente en tabla usuarios.');
             return data[0];
         }
     } catch (e) {
-        console.warn('Excepción al crear perfil en tabla perfiles:', e);
+        console.warn('Excepción al crear usuario en tabla usuarios:', e);
     }
 
-    // 2. Fallback: Intentar insertar en 'profiles'
-    try {
-        const { data, error } = await dbClient
-            .from('profiles')
-            .insert([perfilData])
-            .select();
-        
-        if (!error && data && data.length > 0) {
-            console.log('Perfil creado exitosamente en tabla profiles.');
-            return data[0];
-        }
-    } catch (e) {
-        console.warn('Excepción al crear perfil en tabla profiles:', e);
-    }
-
-    console.log('No se pudo crear un perfil en las tablas perfiles/profiles (posiblemente no existen aún). El ticket se guardará directamente.');
+    console.log('No se pudo crear un usuario en la tabla usuarios.');
     return null;
+}
+
+/**
+ * Busca en la tabla 'agentes' un registro cuyo campo 'skill' coincida con la categoría dada.
+ * @param {string} categoria - La categoría o skill a buscar.
+ * @returns {Promise<Object|null>} El agente asignado o null.
+ */
+async function getAgentBySkill(categoria) {
+    if (!dbClient) {
+        // Si aún está cargando la API asíncrona, esperar un instante
+        await new Promise(resolve => setTimeout(resolve, 300));
+        if (!dbClient) return null;
+    }
+
+    try {
+        const { data, error } = await dbClient
+            .from('agentes')
+            .select('*')
+            .eq('skill', categoria)
+            .limit(1);
+
+        if (error) {
+            console.warn('Error al buscar agente por skill:', error);
+            return null;
+        }
+
+        if (data && data.length > 0) {
+            return data[0];
+        }
+    } catch (e) {
+        console.warn('Excepción al buscar agente por skill:', e);
+    }
+    return null;
+}
+
+/**
+ * Busca en la tabla 'agentes' todos los registros cuyo campo 'skill' sea NULL.
+ * @returns {Promise<Array>} Lista de agentes con skill nula.
+ */
+async function getAgentsWithNullSkill() {
+    if (!dbClient) {
+        // Si aún está cargando la API asíncrona, esperar un instante
+        await new Promise(resolve => setTimeout(resolve, 300));
+        if (!dbClient) return [];
+    }
+
+    try {
+        const { data, error } = await dbClient
+            .from('agentes')
+            .select('*')
+            .is('skill', null);
+
+        if (error) {
+            console.warn('Error al buscar agentes con skill nula:', error);
+            return [];
+        }
+
+        return data || [];
+    } catch (e) {
+        console.warn('Excepción al buscar agentes con skill nula:', e);
+    }
+    return [];
+}
+
+/**
+ * Busca hasta 5 usuarios cuyo nombre o correo contengan la consulta indicada.
+ * @param {string} query - El término de búsqueda.
+ * @returns {Promise<Array>} Lista de coincidencias.
+ */
+async function searchMatchingUsers(query) {
+    if (!dbClient) {
+        // Si aún está cargando la API asíncrona, esperar un instante
+        await new Promise(resolve => setTimeout(resolve, 300));
+        if (!dbClient) return [];
+    }
+    if (!query || query.length < 2) return [];
+
+    try {
+        const { data, error } = await dbClient
+            .from('usuarios')
+            .select('id, nombre_completo, correo')
+            .or(`nombre_completo.ilike.%${query}%,correo.ilike.%${query}%`)
+            .limit(5);
+
+        if (error) {
+            console.warn('Error al buscar sugerencias de usuarios:', error);
+            return [];
+        }
+
+        return data || [];
+    } catch (e) {
+        console.warn('Excepción al buscar sugerencias de usuarios:', e);
+    }
+    return [];
 }
