@@ -14,126 +14,276 @@
 <body>
 
     <main class="ticket-container">
-        <header class="ticket-header">
-            <div class="logo">
+        <!-- NAV TABS -->
+        <nav class="tab-nav" id="tabNav">
+            <button class="tab-btn active" data-tab="soporte" id="tabSoporte">
+                <i class='bx bx-support'></i>
+                <span>Soporte</span>
+            </button>
+            <button class="tab-btn" data-tab="facilities" id="tabFacilities">
+                <i class='bx bx-building-house'></i>
+                <span>Facilities</span>
+            </button>
+            <div class="tab-indicator" id="tabIndicator"></div>
+        </nav>
 
-            </div>
-            <h1>¿En qué podemos ayudarte?</h1>
-            <p>Completa el formulario para levantar un ticket y recibir ayuda de nuestro equipo.</p>
-        </header>
+        <!-- TAB DE SOPORTE -->
+        <div class="tab-panel active" id="panelSoporte" data-panel="soporte">
+            <header class="ticket-header">
+                <div class="logo">
 
-        <form id="ticketForm" class="ticket-form" novalidate>
-            <div class="form-row">
+                </div>
+                <h1>¿En qué podemos ayudarte?</h1>
+                <p>Completa el formulario para levantar un ticket y recibir ayuda de nuestro equipo.</p>
+            </header>
+
+            <form id="ticketForm" class="ticket-form" novalidate>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fullName">Nombre</label>
+                        <div class="input-wrapper">
+
+                            <i class='bx bx-user'></i>
+                            <input type="text" id="fullName" name="fullName" placeholder="Nombre Apellido" required>
+                        </div>
+                        <span class="error-message">Este campo es requerido</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Correo Electrónico</label>
+                        <div class="input-wrapper">
+                            <i class='bx bx-envelope'></i>
+                            <input type="email" id="email" name="email" placeholder="correo@ejemplo.com" required>
+                        </div>
+                        <span class="error-message">Ingresa un correo válido</span>
+                    </div>
+                </div>
+
+                <!-- Contenedor para el estado del perfil -->
+                <div id="profileStatusContainer" class="profile-status-container hidden">
+                    <i class="profile-status-icon bx"></i>
+                    <span id="profileStatusMessage"></span>
+                </div>
+
                 <div class="form-group">
-                    <label for="fullName">Nombre</label>
-                    <div class="input-wrapper">
+                    <label for="sucursal">Sucursal</label>
+                    <div class="input-wrapper select-wrapper">
+                        <i class='bx bx-buildings'></i>
+                        <select id="sucursal" name="sucursal" required>
+                            <option value="" disabled selected>Selecciona una sucursal</option>
+                            <option value="morelos">Morelos</option>
+                            <option value="aztecas">Aztecas</option>
+                            <option value="almer">Almer</option>
 
-                        <i class='bx bx-user'></i>
-                        <input type="text" id="fullName" name="fullName" placeholder="Nombre Apellido" required>
+                        </select>
+                        <i class='bx bx-chevron-down arrow-icon'></i>
+                    </div>
+                    <span class="error-message">Selecciona una sucursal</span>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="categoria">Categoría del Problema</label>
+                        <div class="input-wrapper select-wrapper">
+                            <i class='bx bx-category'></i>
+                            <select id="categoria" name="categoria" required>
+                                <option value="" disabled selected>Selecciona una categoría</option>
+                                <option value="equipo-computo">Equipo de Cómputo</option>
+                                <option value="software">Software</option>
+                                <option value="internet">Red/Internet</option>
+                                <option value="celular">Celular</option>
+                                <option value="cuenta">Acceso / Cuenta</option>
+                                <option value="otro">Otro</option>
+                            </select>
+                            <i class='bx bx-chevron-down arrow-icon'></i>
+                        </div>
+                        <span class="error-message">Selecciona una categoría válida</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="prioridad">Prioridad</label>
+                        <div class="input-wrapper select-wrapper">
+                            <i class='bx bx-tachometer'></i>
+                            <select id="prioridad" name="prioridad" required>
+                                <option value="baja">Baja</option>
+                                <option value="media" selected>Media</option>
+                                <option value="alta">Alta</option>
+                                <option value="urgente">Urgente</option>
+                            </select>
+                            <i class='bx bx-chevron-down arrow-icon'></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="asunto">Asunto</label>
+                    <div class="input-wrapper">
+                        <i class='bx bx-text'></i>
+                        <input type="text" id="asunto" name="asunto" placeholder="Resumen breve de tu problema"
+                            required>
                     </div>
                     <span class="error-message">Este campo es requerido</span>
                 </div>
+
                 <div class="form-group">
-                    <label for="email">Correo Electrónico</label>
-                    <div class="input-wrapper">
-                        <i class='bx bx-envelope'></i>
-                        <input type="email" id="email" name="email" placeholder="correo@ejemplo.com" required>
+                    <label for="descripcion">Descripción Detallada</label>
+                    <div class="input-wrapper textarea-wrapper">
+                        <i class='bx bx-align-left'></i>
+                        <textarea id="descripcion" name="descripcion" rows="5"
+                            placeholder="Describe tu problema con el mayor detalle posible..." required></textarea>
                     </div>
-                    <span class="error-message">Ingresa un correo válido</span>
+                    <span class="error-message">Este campo es requerido</span>
                 </div>
-            </div>
 
-            <!-- Contenedor para el estado del perfil -->
-            <div id="profileStatusContainer" class="profile-status-container hidden">
-                <i class="profile-status-icon bx"></i>
-                <span id="profileStatusMessage"></span>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="categoria">Categoría del Problema</label>
-                    <div class="input-wrapper select-wrapper">
-                        <i class='bx bx-category'></i>
-                        <select id="categoria" name="categoria" required>
-                            <option value="" disabled selected>Selecciona una categoría</option>
-                            <option value="equipo-computo">Equipo de Cómputo</option>
-                            <option value="software">Software</option>
-                            <option value="internet">Red/Internet</option>
-                            <option value="celular">Celular</option>
-                            <option value="cuenta">Acceso / Cuenta</option>
-                            <option value="otro">Otro</option>
-                        </select>
-                        <i class='bx bx-chevron-down arrow-icon'></i>
-                    </div>
-                    <span class="error-message">Selecciona una categoría válida</span>
-                </div>
-                <div class="form-group">
-                    <label for="prioridad">Prioridad</label>
-                    <div class="input-wrapper select-wrapper">
-                        <i class='bx bx-tachometer'></i>
-                        <select id="prioridad" name="prioridad" required>
-                            <option value="baja">Baja</option>
-                            <option value="media" selected>Media</option>
-                            <option value="alta">Alta</option>
-                            <option value="urgente">Urgente</option>
-                        </select>
-                        <i class='bx bx-chevron-down arrow-icon'></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="asunto">Asunto</label>
-                <div class="input-wrapper">
-                    <i class='bx bx-text'></i>
-                    <input type="text" id="asunto" name="asunto" placeholder="Resumen breve de tu problema" required>
-                </div>
-                <span class="error-message">Este campo es requerido</span>
-            </div>
-
-            <div class="form-group">
-                <label for="descripcion">Descripción Detallada</label>
-                <div class="input-wrapper textarea-wrapper">
-                    <i class='bx bx-align-left'></i>
-                    <textarea id="descripcion" name="descripcion" rows="5"
-                        placeholder="Describe tu problema con el mayor detalle posible..." required></textarea>
-                </div>
-                <span class="error-message">Este campo es requerido</span>
-            </div>
-
-            <button type="submit" class="submit-btn">
-                <span>Enviar Ticket</span>
-                <i class='bx bx-send'></i>
-            </button>
-
-            <button type="button" id="testTicketBtn" class="outline-btn test-btn">
-                <span>Testear Ticket (Previsualizar)</span>
-                <i class='bx bx-bug'></i>
-            </button>
-        </form>
-
-        <div id="successMessage" class="success-message hidden">
-            <div class="success-icon">
-                <i class='bx bx-check'></i>
-            </div>
-            <h2>¡Ticket Creado con Éxito!</h2>
-            <p>Tu número de ticket es <strong id="ticketId">#TCK-0000</strong>.</p>
-            <p>Hemos enviado un correo de confirmación con los detalles. Nuestro equipo se pondrá en contacto pronto.
-            </p>
-
-            <div id="receiptImageContainer" class="receipt-image-container hidden">
-                <h3>Tu Recibo de Soporte</h3>
-                <div class="receipt-image-wrapper">
-                    <img id="receiptImage" src="" alt="Recibo de Soporte" class="receipt-img">
-                </div>
-                <button id="downloadReceiptBtn" class="outline-btn secondary-btn">
-                    <i class='bx bx-download'></i> Descargar Recibo PNG
+                <button type="submit" class="submit-btn">
+                    <span>Enviar Ticket</span>
+                    <i class='bx bx-send'></i>
                 </button>
+
+                <button type="button" id="testTicketBtn" class="outline-btn test-btn">
+                    <span>Testear Ticket (Previsualizar)</span>
+                    <i class='bx bx-bug'></i>
+                </button>
+            </form>
+
+            <div id="successMessage" class="success-message hidden">
+                <div class="success-icon">
+                    <i class='bx bx-check'></i>
+                </div>
+                <h2>¡Ticket Creado con Éxito!</h2>
+                <p>Tu número de ticket es <strong id="ticketId">#TCK-0000</strong>.</p>
+                <p>Hemos enviado un correo de confirmación con los detalles. Nuestro equipo se pondrá en contacto
+                    pronto.
+                </p>
+
+                <div id="receiptImageContainer" class="receipt-image-container hidden">
+                    <h3>Tu Recibo de Soporte</h3>
+                    <div class="receipt-image-wrapper">
+                        <img id="receiptImage" src="" alt="Recibo de Soporte" class="receipt-img">
+                    </div>
+                    <button id="downloadReceiptBtn" class="outline-btn secondary-btn">
+                        <i class='bx bx-download'></i> Descargar Recibo PNG
+                    </button>
+                </div>
+
+
+
+                <button id="newTicketBtn" class="outline-btn">Crear Nuevo Ticket</button>
             </div>
+        </div>
 
+        <!-- TAB DE FACILITIES -->
+        <div class="tab-panel" id="panelFacilities" data-panel="facilities">
+            <header class="ticket-header">
+                <div class="logo">
 
+                </div>
+                <h1>Solicitud de Servicios</h1>
+                <p>Reporta incidencias o solicita servicios de mantenimiento.</p>
+            </header>
 
-            <button id="newTicketBtn" class="outline-btn">Crear Nuevo Ticket</button>
+            <form id="facilitiesForm" class="ticket-form" novalidate>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="facFullName">Nombre</label>
+                        <div class="input-wrapper">
+                            <i class='bx bx-user'></i>
+                            <input type="text" id="facFullName" name="fullName" placeholder="Nombre Apellido" required>
+                        </div>
+                        <span class="error-message">Este campo es requerido</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="facEmail">Correo Electrónico</label>
+                        <div class="input-wrapper">
+                            <i class='bx bx-envelope'></i>
+                            <input type="email" id="facEmail" name="email" placeholder="correo@ejemplo.com" required>
+                        </div>
+                        <span class="error-message">Ingresa un correo válido</span>
+                    </div>
+                </div>
+
+                <!-- Contenedor para el estado del perfil (Facilities) -->
+                <div id="facProfileStatusContainer" class="profile-status-container hidden">
+                    <i class="profile-status-icon bx"></i>
+                    <span id="facProfileStatusMessage"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="facSucursal">Sucursal</label>
+                    <div class="input-wrapper select-wrapper">
+                        <i class='bx bx-buildings'></i>
+                        <select id="facSucursal" name="sucursal" required>
+                            <option value="" disabled selected>Selecciona una sucursal</option>
+                            <option value="morelos">Morelos</option>
+                            <option value="aztecas">Aztecas</option>
+                            <option value="almer">Almer</option>
+
+                        </select>
+                        <i class='bx bx-chevron-down arrow-icon'></i>
+                    </div>
+                    <span class="error-message">Selecciona una sucursal</span>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="facCategoria">Tipo de Solicitud</label>
+                        <div class="input-wrapper select-wrapper">
+                            <i class='bx bx-wrench'></i>
+                            <select id="facCategoria" name="categoria" required>
+                                <option value="" disabled selected>Selecciona un tipo</option>
+                                <option value="mantenimiento">Mantenimiento</option>
+                                <option value="limpieza">Limpieza</option>
+                                <option value="reparacion">Reparación</option>
+                                <option value="instalacion">Instalación</option>
+                            </select>
+                            <i class='bx bx-chevron-down arrow-icon'></i>
+                        </div>
+                        <span class="error-message">Selecciona un tipo válido</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="facUbicacion">Ubicación</label>
+                        <div class="input-wrapper">
+                            <i class='bx bx-map'></i>
+                            <input type="text" id="facUbicacion" name="ubicacion" placeholder="Ej: Sala de Juntas"
+                                required>
+                        </div>
+                        <span class="error-message">Este campo es requerido</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="facAsunto">Asunto</label>
+                    <div class="input-wrapper">
+                        <i class='bx bx-text'></i>
+                        <input type="text" id="facAsunto" name="asunto" placeholder="Resumen breve de la solicitud"
+                            required>
+                    </div>
+                    <span class="error-message">Este campo es requerido</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="facDescripcion">Descripción Detallada</label>
+                    <div class="input-wrapper textarea-wrapper">
+                        <i class='bx bx-align-left'></i>
+                        <textarea id="facDescripcion" name="descripcion" rows="5"
+                            placeholder="Describe la situación con el mayor detalle posible..." required></textarea>
+                    </div>
+                    <span class="error-message">Este campo es requerido</span>
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    <span>Enviar Solicitud</span>
+                    <i class='bx bx-send'></i>
+                </button>
+            </form>
+
+            <div id="facSuccessMessage" class="success-message hidden">
+                <div class="success-icon">
+                    <i class='bx bx-check'></i>
+                </div>
+                <h2>¡Solicitud Enviada!</h2>
+                <p>Tu número de solicitud es <strong id="facTicketId">#FAC-0000</strong>.</p>
+                <p>El equipo de Facilities ha recibido tu solicitud y se pondrá en contacto pronto.</p>
+                <button id="facNewTicketBtn" class="outline-btn">Crear Nueva Solicitud</button>
+            </div>
         </div>
     </main>
 

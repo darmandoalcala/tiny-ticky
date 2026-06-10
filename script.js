@@ -1,188 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('ticketForm');
-    const successMessage = document.getElementById('successMessage');
-    const newTicketBtn = document.getElementById('newTicketBtn');
-    const testTicketBtn = document.getElementById('testTicketBtn');
-    const ticketHeader = document.querySelector('.ticket-header p');
-
-    // Elementos de estado del perfil
-    const nameInput = document.getElementById('fullName');
-    const emailInput = document.getElementById('email');
-    const statusContainer = document.getElementById('profileStatusContainer');
-    const statusIcon = statusContainer ? statusContainer.querySelector('.profile-status-icon') : null;
-    const statusMessage = document.getElementById('profileStatusMessage');
-
-    // Elementos del Recibo Térmico
-    const receiptImageContainer = document.getElementById('receiptImageContainer');
-    const receiptImage = document.getElementById('receiptImage');
-    const downloadReceiptBtn = document.getElementById('downloadReceiptBtn');
-
-    let debounceTimeout = null;
-    let profileExists = false;
-    let currentUserId = null;
-    let isAutofilling = false;
-
-
-    async function checkProfile() {
-        if (!nameInput || !emailInput || !statusContainer) return;
-
-        const nameVal = nameInput.value.trim();
-        const emailVal = emailInput.value.trim();
-
-        profileExists = false;
-        currentUserId = null;
-
-        const validEmail = validateEmail(emailVal);
-        const validName = nameVal.length >= 3;
-        if (!validName && !validEmail) {
-            statusContainer.classList.add('hidden');
-            return;
-        }
-
-        statusContainer.classList.remove('hidden', 'exists', 'new-profile');
-        statusContainer.classList.add('searching');
-        if (statusIcon) statusIcon.className = 'profile-status-icon bx bx-loader-alt bx-spin';
-        if (statusMessage) statusMessage.textContent = 'Buscando perfil de usuario...';
-
-        try {
-            const res = await searchProfileByNameOrEmail(nameVal || null, emailVal || null);
-
-            if (res && res.profile) {
-                profileExists = true;
-                currentUserId = res.profile.id;
-                statusContainer.classList.remove('searching', 'new-profile');
-                statusContainer.classList.add('exists');
-                if (statusIcon) statusIcon.className = 'profile-status-icon bx bx-user-check';
-                if (statusMessage) {
-                    statusMessage.innerHTML = `¡Perfil encontrado! Vincularemos tu ticket al perfil de <strong>${res.profile.nombre_completo || nameVal}</strong> (${res.profile.correo || emailVal}).`;
-                }
-
-                // Autocompletado cruzado inteligente (Evita bucles infinitos con isAutofilling)
-                isAutofilling = true;
-                if (res.profile.nombre_completo && nameInput.value !== res.profile.nombre_completo) {
-                    nameInput.value = res.profile.nombre_completo;
-                }
-                if (res.profile.correo && emailInput.value !== res.profile.correo) {
-                    emailInput.value = res.profile.correo;
-                }
-                isAutofilling = false;
-            } else {
-                profileExists = false;
-                currentUserId = null;
-                statusContainer.classList.remove('searching', 'exists');
-                statusContainer.classList.add('new-profile');
-                if (statusIcon) statusIcon.className = 'profile-status-icon bx bx-user-plus';
-                if (statusMessage) {
-                    statusMessage.innerHTML = `No se encontró un perfil existente. <strong>Se creará un nuevo perfil</strong> para ti al enviar el ticket.`;
-                }
-            }
-        } catch (error) {
-            console.error('Error al buscar perfil:', error);
-            profileExists = false;
-            currentUserId = null;
-            statusContainer.classList.remove('searching', 'exists');
-            statusContainer.classList.add('new-profile');
-            if (statusIcon) statusIcon.className = 'profile-status-icon bx bx-info-circle';
-            if (statusMessage) {
-                statusMessage.innerHTML = `No se pudo verificar el perfil. <strong>Se creará un nuevo perfil</strong> para ti al enviar el ticket.`;
-            }
-        }
-    }
-
-    let suggestionsTimeout = null;
-
-    function handleInputModification(e) {
-        if (isAutofilling) return;
-
-        // Limpiar desplegables previos al escribir
-        clearSuggestionsDropdown();
-
-        if (profileExists) {
-            // El usuario modificó un campo después de haber encontrado un perfil: limpiamos ambos campos
-            isAutofilling = true;
-            const targetInput = e.target;
-            
-            nameInput.value = "";
-            emailInput.value = "";
-            
-            profileExists = false;
-            currentUserId = null;
-            
-            if (statusContainer) {
-                statusContainer.classList.add('hidden');
-                statusContainer.classList.remove('exists', 'searching', 'new-profile');
-            }
-            
-            isAutofilling = false;
-            
-            // Devolver el foco al campo que se modificó
-            setTimeout(() => {
-                targetInput.focus();
-            }, 0);
-            return;
-        }
-
-        // Búsqueda habitual si no hay perfil pre-cargado
-        triggerDebounceCheck();
-
-        // Obtener sugerencias en tiempo real
-        const queryVal = e.target.value.trim();
-        if (queryVal.length >= 2) {
-            if (suggestionsTimeout) clearTimeout(suggestionsTimeout);
-            suggestionsTimeout = setTimeout(async () => {
-                if (typeof searchMatchingUsers === 'function') {
-                    const matches = await searchMatchingUsers(queryVal);
-                    showSuggestionsDropdown(e.target, matches);
-                }
-            }, 250);
-        }
-    }
-
-    function showSuggestionsDropdown(inputElement, matches) {
-        clearSuggestionsDropdown();
-        if (!matches || matches.length === 0) return;
-
-        const wrapper = inputElement.closest('.input-wrapper');
-        if (!wrapper) return;
-
-        const container = document.createElement('div');
-        container.className = 'autocomplete-suggestions';
-
-        matches.forEach(user => {
-            const item = document.createElement('div');
-            item.className = 'autocomplete-suggestion';
-            item.innerHTML = `
-                <span class="suggestion-name">${user.nombre_completo}</span>
-                <span class="suggestion-email">${user.correo}</span>
-            `;
-
-            item.addEventListener('click', (clickEvent) => {
-                clickEvent.stopPropagation(); // Prevenir cierre inmediato al hacer clic en la opción
-
-                isAutofilling = true;
-                nameInput.value = user.nombre_completo;
-                emailInput.value = user.correo;
-                isAutofilling = false;
-
-                profileExists = true;
-                currentUserId = user.id;
-
-                if (statusContainer) {
-                    statusContainer.classList.remove('hidden', 'searching', 'new-profile');
-                    statusContainer.classList.add('exists');
-                    if (statusIcon) statusIcon.className = 'profile-status-icon bx bx-user-check';
-                    if (statusMessage) {
-                        statusMessage.innerHTML = `¡Perfil encontrado! Vincularemos tu ticket al perfil de <strong>${user.nombre_completo}</strong> (${user.correo}).`;
-                    }
-                }
-
-                clearSuggestionsDropdown();
-            });
-
-            container.appendChild(item);
+    // ====================================================================
+    //  UTILIDADES COMPARTIDAS
+    // ====================================================================
+    function showError(element) {
+        const group = element.closest('.form-group');
+        if (!group) return;
+        group.classList.add('error');
+        element.addEventListener('input', function removeError() {
+            group.classList.remove('error');
+            element.removeEventListener('input', removeError);
         });
+    }
 
-        wrapper.appendChild(container);
+    function validateEmail(email) {
+        const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.​[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+        return re.test(String(email).toLowerCase());
     }
 
     function clearSuggestionsDropdown() {
@@ -197,35 +29,244 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function triggerDebounceCheck() {
-        if (debounceTimeout) {
-            clearTimeout(debounceTimeout);
+    function setupProfileSearch(config) {
+        const {
+            nameInput,
+            emailInput,
+            statusContainer,
+            statusMessage: statusMsgEl,
+        } = config;
+
+        const statusIcon = statusContainer ? statusContainer.querySelector('.profile-status-icon') : null;
+
+        // Estado independiente para este par de campos
+        const state = {
+            profileExists: false,
+            currentUserId: null,
+            isAutofilling: false,
+            debounceTimeout: null,
+            suggestionsTimeout: null,
+        };
+
+        async function checkProfile() {
+            if (!nameInput || !emailInput || !statusContainer) return;
+
+            const nameVal = nameInput.value.trim();
+            const emailVal = emailInput.value.trim();
+
+            state.profileExists = false;
+            state.currentUserId = null;
+
+            const validEmail = validateEmail(emailVal);
+            const validName = nameVal.length >= 3;
+            if (!validName && !validEmail) {
+                statusContainer.classList.add('hidden');
+                return;
+            }
+
+            statusContainer.classList.remove('hidden', 'exists', 'new-profile');
+            statusContainer.classList.add('searching');
+            if (statusIcon) statusIcon.className = 'profile-status-icon bx bx-loader-alt bx-spin';
+            if (statusMsgEl) statusMsgEl.textContent = 'Buscando perfil de usuario...';
+
+            try {
+                const res = await searchProfileByNameOrEmail(nameVal || null, emailVal || null);
+
+                if (res && res.profile) {
+                    state.profileExists = true;
+                    state.currentUserId = res.profile.id;
+                    statusContainer.classList.remove('searching', 'new-profile');
+                    statusContainer.classList.add('exists');
+                    if (statusIcon) statusIcon.className = 'profile-status-icon bx bx-user-check';
+                    if (statusMsgEl) {
+                        statusMsgEl.innerHTML = `¡Perfil encontrado! Vincularemos tu ticket al perfil de <strong>${res.profile.nombre_completo || nameVal}</strong> (${res.profile.correo || emailVal}).`;
+                    }
+
+                    state.isAutofilling = true;
+                    if (res.profile.nombre_completo && nameInput.value !== res.profile.nombre_completo) {
+                        nameInput.value = res.profile.nombre_completo;
+                    }
+                    if (res.profile.correo && emailInput.value !== res.profile.correo) {
+                        emailInput.value = res.profile.correo;
+                    }
+                    state.isAutofilling = false;
+                } else {
+                    state.profileExists = false;
+                    state.currentUserId = null;
+                    statusContainer.classList.remove('searching', 'exists');
+                    statusContainer.classList.add('new-profile');
+                    if (statusIcon) statusIcon.className = 'profile-status-icon bx bx-user-plus';
+                    if (statusMsgEl) {
+                        statusMsgEl.innerHTML = `No se encontró un perfil existente. <strong>Se creará un nuevo perfil</strong> para ti al enviar el ticket.`;
+                    }
+                }
+            } catch (error) {
+                console.error('Error al buscar perfil:', error);
+                state.profileExists = false;
+                state.currentUserId = null;
+                statusContainer.classList.remove('searching', 'exists');
+                statusContainer.classList.add('new-profile');
+                if (statusIcon) statusIcon.className = 'profile-status-icon bx bx-info-circle';
+                if (statusMsgEl) {
+                    statusMsgEl.innerHTML = `No se pudo verificar el perfil. <strong>Se creará un nuevo perfil</strong> para ti al enviar el ticket.`;
+                }
+            }
         }
-        debounceTimeout = setTimeout(checkProfile, 600);
+
+        function triggerDebounceCheck() {
+            if (state.debounceTimeout) clearTimeout(state.debounceTimeout);
+            state.debounceTimeout = setTimeout(checkProfile, 600);
+        }
+
+        function showSuggestionsDropdown(inputElement, matches) {
+            clearSuggestionsDropdown();
+            if (!matches || matches.length === 0) return;
+
+            const wrapper = inputElement.closest('.input-wrapper');
+            if (!wrapper) return;
+
+            const container = document.createElement('div');
+            container.className = 'autocomplete-suggestions';
+
+            matches.forEach(user => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-suggestion';
+                item.innerHTML = `
+                    <span class="suggestion-name">${user.nombre_completo}</span>
+                    <span class="suggestion-email">${user.correo}</span>
+                `;
+
+                item.addEventListener('click', (clickEvent) => {
+                    clickEvent.stopPropagation();
+
+                    state.isAutofilling = true;
+                    nameInput.value = user.nombre_completo;
+                    emailInput.value = user.correo;
+                    state.isAutofilling = false;
+
+                    state.profileExists = true;
+                    state.currentUserId = user.id;
+
+                    if (statusContainer) {
+                        statusContainer.classList.remove('hidden', 'searching', 'new-profile');
+                        statusContainer.classList.add('exists');
+                        if (statusIcon) statusIcon.className = 'profile-status-icon bx bx-user-check';
+                        if (statusMsgEl) {
+                            statusMsgEl.innerHTML = `¡Perfil encontrado! Vincularemos tu ticket al perfil de <strong>${user.nombre_completo}</strong> (${user.correo}).`;
+                        }
+                    }
+
+                    clearSuggestionsDropdown();
+                });
+
+                container.appendChild(item);
+            });
+
+            wrapper.appendChild(container);
+        }
+
+        function handleInputModification(e) {
+            if (state.isAutofilling) return;
+
+            clearSuggestionsDropdown();
+
+            if (state.profileExists) {
+                state.isAutofilling = true;
+                const targetInput = e.target;
+
+                nameInput.value = "";
+                emailInput.value = "";
+
+                state.profileExists = false;
+                state.currentUserId = null;
+
+                if (statusContainer) {
+                    statusContainer.classList.add('hidden');
+                    statusContainer.classList.remove('exists', 'searching', 'new-profile');
+                }
+
+                state.isAutofilling = false;
+
+                setTimeout(() => { targetInput.focus(); }, 0);
+                return;
+            }
+
+            triggerDebounceCheck();
+
+            const queryVal = e.target.value.trim();
+            if (queryVal.length >= 2) {
+                if (state.suggestionsTimeout) clearTimeout(state.suggestionsTimeout);
+                state.suggestionsTimeout = setTimeout(async () => {
+                    if (typeof searchMatchingUsers === 'function') {
+                        const matches = await searchMatchingUsers(queryVal);
+                        showSuggestionsDropdown(e.target, matches);
+                    }
+                }, 250);
+            }
+        }
+
+        // Registrar eventos
+        if (nameInput && emailInput) {
+            nameInput.addEventListener('input', handleInputModification);
+            emailInput.addEventListener('input', handleInputModification);
+            nameInput.addEventListener('blur', checkProfile);
+            emailInput.addEventListener('blur', checkProfile);
+        }
+
+        return state;
     }
 
-    // Registrar eventos para la búsqueda en tiempo real
-    if (nameInput && emailInput) {
-        nameInput.addEventListener('input', handleInputModification);
-        emailInput.addEventListener('input', handleInputModification);
-        nameInput.addEventListener('blur', checkProfile);
-        emailInput.addEventListener('blur', checkProfile);
-    }
+    // ====================================================================
+    //  TAB: SOPORTE
+    // ====================================================================
+    const form = document.getElementById('ticketForm');
+    const successMessage = document.getElementById('successMessage');
+    const newTicketBtn = document.getElementById('newTicketBtn');
+    const testTicketBtn = document.getElementById('testTicketBtn');
+    const ticketHeader = document.querySelector('#panelSoporte .ticket-header p');
 
-    /**
-     * Llena dinámicamente el recibo HTML y lo convierte en una imagen PNG usando canvas
-     * @param {Object} ticketData - ticket data
-     * @param {string} ticketId - ticket id
-     */
+    const nameInput = document.getElementById('fullName');
+    const emailInput = document.getElementById('email');
+    const statusContainer = document.getElementById('profileStatusContainer');
+    const statusMessage = document.getElementById('profileStatusMessage');
+
+    const receiptImageContainer = document.getElementById('receiptImageContainer');
+    const receiptImage = document.getElementById('receiptImage');
+    const downloadReceiptBtn = document.getElementById('downloadReceiptBtn');
+
+    // Configurar búsqueda de perfil para Soporte
+    const soporteProfileState = setupProfileSearch({
+        nameInput,
+        emailInput,
+        statusContainer,
+        statusMessage,
+    });
+
+    // ====================================================================
+    //  TAB: FACILITIES — Configurar búsqueda de perfil
+    // ====================================================================
+    const facNameInput = document.getElementById('facFullName');
+    const facEmailInput = document.getElementById('facEmail');
+    const facStatusContainer = document.getElementById('facProfileStatusContainer');
+    const facStatusMessage = document.getElementById('facProfileStatusMessage');
+
+    const facProfileState = setupProfileSearch({
+        nameInput: facNameInput,
+        emailInput: facEmailInput,
+        statusContainer: facStatusContainer,
+        statusMessage: facStatusMessage,
+    });
+
+    // ====================================================================
+    //  RECIBO TÉRMICO (solo Soporte por ahora)
+    // ====================================================================
     async function generateReceiptImage(ticketData, ticketId) {
         if (!receiptImageContainer || !receiptImage) return;
 
-        // 1. Obtener fecha y hora actuales en formato de 24h
         const ahora = new Date();
         const fechaStr = ahora.toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' });
         const horaStr = ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-        
-        // 2. Mapear categorías a su etiqueta
+
         const catMap = {
             'equipo-computo': 'EQUIPO DE COMPUTO',
             'software': 'SOFTWARE / ACCESO',
@@ -237,14 +278,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         const catLabel = catMap[ticketData.categoria] || ticketData.categoria.toUpperCase();
         const agentName = (ticketData.asignado_a || 'AGENTE GENERAL').toUpperCase();
-        
-        // 4. Formatear y cortar descripción
+
         let descCorta = ticketData.descripcion;
         if (descCorta.length > 150) {
             descCorta = descCorta.substring(0, 147) + '...';
         }
 
-        // 5. Construir la plantilla HTML dinámica del recibo
         const receiptHtml = `
             <div id="editableReceipt" class="receipt-paper">
                 <div class="receipt-header">
@@ -258,6 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p>FECHA: <span>${fechaStr}</span></p>
                     <p>HORA: <span>${horaStr}</span></p>
                     <p>ESTADO: ACTIVO / ABIERTO</p>
+                    <p>SUCURSAL: <span>${(ticketData.sucursal || 'N/A').toUpperCase()}</span></p>
                     <p>--------------------------------</p>
                 </div>
                 
@@ -306,7 +346,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        //Crear un contenedor temporal
         const tempContainer = document.createElement('div');
         tempContainer.className = 'receipt-offscreen';
         tempContainer.innerHTML = receiptHtml;
@@ -318,22 +357,20 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const canvas = await html2canvas(editableReceipt, {
                     backgroundColor: null,
-                    scale: 2, // Calidad x2 para la tipografía
+                    scale: 2,
                     logging: false,
                     useCORS: true
                 });
 
                 const imgData = canvas.toDataURL('image/png');
-                
-                // Cargar imagen en la vista del usuario
+
                 receiptImage.src = imgData;
                 receiptImageContainer.classList.remove('hidden');
 
-                // 9. Configurar botón de descarga
                 if (downloadReceiptBtn) {
                     const newDownloadBtn = downloadReceiptBtn.cloneNode(true);
                     downloadReceiptBtn.parentNode.replaceChild(newDownloadBtn, downloadReceiptBtn);
-                    
+
                     newDownloadBtn.addEventListener('click', () => {
                         const link = document.createElement('a');
                         link.download = `recibo-${ticketId.toLowerCase()}.png`;
@@ -344,7 +381,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (canvasError) {
                 console.error('Error al generar la imagen del recibo:', canvasError);
             } finally {
-                // 10. Limpiar el DOM eliminando el contenedor temporal offscreen
                 if (tempContainer.parentNode) {
                     tempContainer.parentNode.removeChild(tempContainer);
                 }
@@ -352,33 +388,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Función para asignar al responsable del ticket.
-     * 
-     * @param {Object} ticketData - ticket data
-     * @returns {Promise<void>}
-     */
     async function asignarResponsableTicket(ticketData) {
         try {
-            // Intentar obtener el agente dinámicamente desde Supabase usando la categoría
             if (typeof getAgentBySkill === 'function') {
                 const agente = await getAgentBySkill(ticketData.categoria);
                 if (agente && agente.nombre_completo) {
                     ticketData.agente_id = agente.id;
-                    ticketData.asignado_a = agente.nombre_completo; // Para mostrar en el recibo
+                    ticketData.asignado_a = agente.nombre_completo;
                     console.log(`Asignación Automática de Base de Datos: ${agente.nombre_completo} (Skill: ${ticketData.categoria})`);
                     return;
                 }
 
-                // Si no hay agente con la skill correspondiente, sortear entre los que tienen skill NULL
                 if (typeof getAgentsWithNullSkill === 'function') {
                     const agentesComunes = await getAgentsWithNullSkill();
                     if (agentesComunes && agentesComunes.length > 0) {
                         const indiceAzar = Math.floor(Math.random() * agentesComunes.length);
                         const agenteSorteado = agentesComunes[indiceAzar];
-                        
+
                         ticketData.agente_id = agenteSorteado.id;
-                        ticketData.asignado_a = agenteSorteado.nombre_completo; // Para mostrar en el recibo
+                        ticketData.asignado_a = agenteSorteado.nombre_completo;
                         console.log(`Sorteo entre Agentes sin Skill (NULL): ${agenteSorteado.nombre_completo}`);
                         return;
                     }
@@ -388,25 +416,24 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn('No se pudo consultar la asignación de agente en la base de datos:', e);
         }
 
-        // Si no hay agentes o falla la asignación de base de datos, queda sin asignar
         ticketData.agente_id = null;
         ticketData.asignado_a = 'SIN ASIGNAR';
         console.log('El ticket se creará sin agente asignado.');
     }
 
-    // Validación y subida
-    form.addEventListener('submit', async function(e) {
+    // ====================================================================
+    //  SOPORTE — Submit
+    // ====================================================================
+    form.addEventListener('submit', async function (e) {
         e.preventDefault();
         let isValid = true;
 
-        // Quitar errores
-        document.querySelectorAll('.form-group').forEach(group => {
+        form.querySelectorAll('.form-group').forEach(group => {
             group.classList.remove('error');
         });
 
-        // Validación básica
-        const requiredFields = ['fullName', 'email', 'categoria', 'asunto', 'descripcion'];
-        
+        const requiredFields = ['fullName', 'email', 'sucursal', 'categoria', 'asunto', 'descripcion'];
+
         requiredFields.forEach(fieldId => {
             const field = document.getElementById(fieldId);
             if (!field) return;
@@ -421,17 +448,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (isValid) {
-            const submitBtn = document.querySelector('.submit-btn');
+            const submitBtn = form.querySelector('.submit-btn');
             const originalBtnText = submitBtn.innerHTML;
-            
+
             submitBtn.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> <span>Enviando...</span>`;
             submitBtn.style.opacity = '0.8';
             submitBtn.disabled = true;
 
-            // Recolectar datos para enviar a Supabase
             const ticketData = {
                 nombre: document.getElementById('fullName').value.trim(),
                 email: document.getElementById('email').value.trim(),
+                sucursal: document.getElementById('sucursal').value,
                 categoria: document.getElementById('categoria').value,
                 prioridad: document.getElementById('prioridad').value,
                 asunto: document.getElementById('asunto').value.trim(),
@@ -439,18 +466,17 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             try {
-                // Buscar o crear el usuario en la base de datos para obtener el usuario_id
-                if (!currentUserId) {
+                if (!soporteProfileState.currentUserId) {
                     try {
                         const res = await searchProfileByNameOrEmail(ticketData.nombre, ticketData.email);
                         if (res && res.profile) {
-                            currentUserId = res.profile.id;
-                            profileExists = true;
+                            soporteProfileState.currentUserId = res.profile.id;
+                            soporteProfileState.profileExists = true;
                         } else {
                             const nuevoUsuario = await createProfileIfDoesNotExist(ticketData.nombre, ticketData.email);
                             if (nuevoUsuario && nuevoUsuario.id) {
-                                currentUserId = nuevoUsuario.id;
-                                profileExists = true;
+                                soporteProfileState.currentUserId = nuevoUsuario.id;
+                                soporteProfileState.profileExists = true;
                             }
                         }
                     } catch (profileError) {
@@ -458,35 +484,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // Asignar el usuario_id obtenido a los datos del ticket
-                ticketData.usuario_id = currentUserId;
+                ticketData.usuario_id = soporteProfileState.currentUserId;
 
-                // Llamar a la función para asignar el responsable del ticket (vacía por el momento)
                 await asignarResponsableTicket(ticketData);
 
-                // Llamar al nuevo JS encargado de la comunicación con la base de datos
                 const ticketCreado = await sendTicketToDB(ticketData);
 
-                // Mostrar el ID del ticket insertado (usar ID asignado por la base de datos)
                 const ticketIdParaMostrar = ticketCreado && ticketCreado.id ? `#TCK-${ticketCreado.id}` : `#TCK-${Math.floor(Math.random() * 9000) + 1000}`;
                 document.getElementById('ticketId').textContent = ticketIdParaMostrar;
 
-                // Ocultar formulario, mostrar pantalla de éxito
                 form.style.display = 'none';
                 if (ticketHeader) ticketHeader.style.display = 'none';
                 if (statusContainer) statusContainer.classList.add('hidden');
                 successMessage.classList.remove('hidden');
 
-                // Generar dinámicamente la imagen del recibo
                 await generateReceiptImage(ticketData, ticketIdParaMostrar);
 
                 form.reset();
-                if (fileNameDisplay) fileNameDisplay.classList.remove('active');
             } catch (error) {
                 console.error('Error al enviar ticket a Supabase:', error);
                 alert(`Error al enviar el ticket: ${error.message || error}`);
             } finally {
-                // Restaurar estado del botón
                 submitBtn.innerHTML = originalBtnText;
                 submitBtn.style.opacity = '1';
                 submitBtn.disabled = false;
@@ -494,20 +512,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // DEBUG
-    // ---- test sin enviar a DB ----
+    // ====================================================================
+    //  SOPORTE — Test (previsualizar sin enviar a DB)
+    // ====================================================================
     if (testTicketBtn) {
-        testTicketBtn.addEventListener('click', async function() {
+        testTicketBtn.addEventListener('click', async function () {
             let isValid = true;
 
-            // Resetear errores previos
-            document.querySelectorAll('.form-group').forEach(group => {
+            form.querySelectorAll('.form-group').forEach(group => {
                 group.classList.remove('error');
             });
 
-            // Validar los campos del formulario
-            const requiredFields = ['fullName', 'email', 'categoria', 'asunto', 'descripcion'];
-            
+            const requiredFields = ['fullName', 'email', 'sucursal', 'categoria', 'asunto', 'descripcion'];
+
             requiredFields.forEach(fieldId => {
                 const field = document.getElementById(fieldId);
                 if (!field) return;
@@ -530,6 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const ticketData = {
                     nombre: document.getElementById('fullName').value.trim(),
                     email: document.getElementById('email').value.trim(),
+                    sucursal: document.getElementById('sucursal').value,
                     categoria: document.getElementById('categoria').value,
                     prioridad: document.getElementById('prioridad').value,
                     asunto: document.getElementById('asunto').value.trim(),
@@ -537,29 +555,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 try {
-                    // Llamar a la función de asignación para que también se pueda probar en previsualización
                     await asignarResponsableTicket(ticketData);
 
-                    // Simular éxito
                     const ticketIdFalso = `#TCK-TEST-${Math.floor(Math.random() * 9000) + 1000}`;
                     document.getElementById('ticketId').textContent = ticketIdFalso;
 
-                    // Ocultar formulario y mostrar pantalla de éxito
                     form.style.display = 'none';
                     if (ticketHeader) ticketHeader.style.display = 'none';
                     if (statusContainer) statusContainer.classList.add('hidden');
                     successMessage.classList.remove('hidden');
 
-                    // Generar recibo de manera directa sin insertar en base de datos
                     await generateReceiptImage(ticketData, ticketIdFalso);
 
                     form.reset();
-                    if (fileNameDisplay) fileNameDisplay.classList.remove('active');
                 } catch (error) {
                     console.error('Error al previsualizar ticket:', error);
                     alert(`Error al generar la previsualización: ${error.message || error}`);
                 } finally {
-                    // Restaurar botón
                     testTicketBtn.innerHTML = originalBtnText;
                     testTicketBtn.style.opacity = '1';
                     testTicketBtn.disabled = false;
@@ -568,24 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function showError(element) {
-        const group = element.closest('.form-group');
-        if (!group) return;
-        group.classList.add('error');
-        
-        // Remove error on input change
-        element.addEventListener('input', function removeError() {
-            group.classList.remove('error');
-            element.removeEventListener('input', removeError);
-        });
-    }
-
-    function validateEmail(email) {
-        const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-        return re.test(String(email).toLowerCase());
-    }
-
-    // Reset to create new ticket
+    // Reset Soporte
     newTicketBtn.addEventListener('click', () => {
         successMessage.classList.add('hidden');
         form.style.display = 'flex';
@@ -593,6 +588,138 @@ document.addEventListener('DOMContentLoaded', () => {
         if (statusContainer) statusContainer.classList.add('hidden');
         if (receiptImageContainer) receiptImageContainer.classList.add('hidden');
         if (receiptImage) receiptImage.src = '';
-        profileExists = false;
+        soporteProfileState.profileExists = false;
+        soporteProfileState.currentUserId = null;
     });
+
+    // ====================================================================
+    //  TAB NAVIGATION
+    // ====================================================================
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabPanels = document.querySelectorAll('.tab-panel');
+    const tabIndicator = document.getElementById('tabIndicator');
+
+    tabBtns.forEach((btn, index) => {
+        btn.addEventListener('click', () => {
+            if (btn.classList.contains('active')) return;
+
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            if (tabIndicator) {
+                tabIndicator.classList.remove('pos-0', 'pos-1');
+                tabIndicator.classList.add(`pos-${index}`);
+            }
+
+            const targetTab = btn.getAttribute('data-tab');
+            tabPanels.forEach(panel => {
+                panel.classList.remove('active');
+                if (panel.getAttribute('data-panel') === targetTab) {
+                    panel.classList.add('active');
+                }
+            });
+        });
+    });
+
+    // ====================================================================
+    //  FACILITIES — Submit
+    // ====================================================================
+    const facForm = document.getElementById('facilitiesForm');
+    const facSuccessMessage = document.getElementById('facSuccessMessage');
+    const facNewTicketBtn = document.getElementById('facNewTicketBtn');
+    const facTicketHeader = document.querySelector('#panelFacilities .ticket-header p');
+
+    if (facForm) {
+        facForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            let isValid = true;
+
+            facForm.querySelectorAll('.form-group').forEach(group => {
+                group.classList.remove('error');
+            });
+
+            const facRequiredFields = ['facFullName', 'facEmail', 'facSucursal', 'facCategoria', 'facUbicacion', 'facAsunto', 'facDescripcion'];
+            facRequiredFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (!field) return;
+                if (!field.value.trim()) {
+                    showError(field);
+                    isValid = false;
+                } else if (field.type === 'email' && !validateEmail(field.value)) {
+                    showError(field);
+                    isValid = false;
+                }
+            });
+
+            if (isValid) {
+                const submitBtn = facForm.querySelector('.submit-btn');
+                const originalBtnText = submitBtn.innerHTML;
+                submitBtn.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> <span>Enviando...</span>`;
+                submitBtn.style.opacity = '0.8';
+                submitBtn.disabled = true;
+
+                const facData = {
+                    nombre: document.getElementById('facFullName').value.trim(),
+                    email: document.getElementById('facEmail').value.trim(),
+                    sucursal: document.getElementById('facSucursal').value,
+                    categoria: document.getElementById('facCategoria').value,
+                    ubicacion: document.getElementById('facUbicacion').value.trim(),
+                    asunto: document.getElementById('facAsunto').value.trim(),
+                    descripcion: document.getElementById('facDescripcion').value.trim(),
+                    tipo: 'facilities'
+                };
+
+                try {
+                    // Buscar o crear perfil para Facilities
+                    if (!facProfileState.currentUserId) {
+                        try {
+                            const res = await searchProfileByNameOrEmail(facData.nombre, facData.email);
+                            if (res && res.profile) {
+                                facProfileState.currentUserId = res.profile.id;
+                                facProfileState.profileExists = true;
+                            } else {
+                                const nuevoUsuario = await createProfileIfDoesNotExist(facData.nombre, facData.email);
+                                if (nuevoUsuario && nuevoUsuario.id) {
+                                    facProfileState.currentUserId = nuevoUsuario.id;
+                                    facProfileState.profileExists = true;
+                                }
+                            }
+                        } catch (profileError) {
+                            console.warn('Error al verificar/crear el perfil del usuario (Facilities):', profileError);
+                        }
+                    }
+
+                    facData.usuario_id = facProfileState.currentUserId;
+
+                    // Por ahora, simular éxito (integrar con DB después)
+                    const facTicketId = `#FAC-${Math.floor(Math.random() * 9000) + 1000}`;
+                    document.getElementById('facTicketId').textContent = facTicketId;
+
+                    facForm.style.display = 'none';
+                    if (facTicketHeader) facTicketHeader.style.display = 'none';
+                    if (facStatusContainer) facStatusContainer.classList.add('hidden');
+                    facSuccessMessage.classList.remove('hidden');
+                    facForm.reset();
+                } catch (error) {
+                    console.error('Error al enviar solicitud de facilities:', error);
+                    alert(`Error al enviar la solicitud: ${error.message || error}`);
+                } finally {
+                    submitBtn.innerHTML = originalBtnText;
+                    submitBtn.style.opacity = '1';
+                    submitBtn.disabled = false;
+                }
+            }
+        });
+    }
+
+    if (facNewTicketBtn) {
+        facNewTicketBtn.addEventListener('click', () => {
+            facSuccessMessage.classList.add('hidden');
+            facForm.style.display = 'flex';
+            if (facTicketHeader) facTicketHeader.style.display = 'block';
+            if (facStatusContainer) facStatusContainer.classList.add('hidden');
+            facProfileState.profileExists = false;
+            facProfileState.currentUserId = null;
+        });
+    }
 });

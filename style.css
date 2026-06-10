@@ -3,11 +3,10 @@
 
 :root {
     --bg-color: #0b0f19;
-    --card-bg: rgba(18, 24, 38, 0.6);
+    --card-bg: rgba(18, 24, 38, 0.85);
     --card-border: rgba(255, 255, 255, 0.08);
     --primary: #6366f1;
     --primary-hover: #4f46e5;
-    --primary-glow: rgba(99, 102, 241, 0.4);
     --secondary: #0ea5e9;
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
@@ -37,59 +36,17 @@ body {
     overflow-x: hidden;
 }
 
-/* Background Animated Blobs */
-.background-elements {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: -1;
-    overflow: hidden;
-}
 
-.blob {
-    position: absolute;
-    filter: blur(80px);
-    border-radius: 50%;
-    opacity: 0.5;
-    animation: float 20s infinite ease-in-out alternate;
-}
-
-.blob-1 {
-    top: -10%;
-    left: -10%;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
-}
-
-.blob-2 {
-    bottom: -20%;
-    right: -10%;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, var(--secondary) 0%, transparent 70%);
-    animation-delay: -5s;
-}
-
-@keyframes float {
-    0% { transform: translate(0, 0) scale(1); }
-    50% { transform: translate(50px, 50px) scale(1.1); }
-    100% { transform: translate(-20px, 80px) scale(0.9); }
-}
 
 /* Container */
 .ticket-container {
     width: 100%;
     max-width: 800px;
     background: var(--card-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--card-border);
     border-radius: 24px;
     padding: 3rem;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
     position: relative;
     overflow: hidden;
     animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
@@ -99,6 +56,92 @@ body {
     from { opacity: 0; transform: translateY(40px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* ====== Tab Navigation ====== */
+.tab-nav {
+    display: flex;
+    position: relative;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 5px;
+    margin-bottom: 2rem;
+    gap: 4px;
+}
+
+.tab-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1.2rem;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    color: var(--text-muted);
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    z-index: 2;
+    user-select: none;
+}
+
+.tab-btn i {
+    font-size: 1.25rem;
+    transition: color 0.35s ease;
+}
+
+.tab-btn:hover {
+    color: var(--text-main);
+}
+
+.tab-btn.active {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.tab-indicator {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    height: calc(100% - 10px);
+    width: calc(50% - 7px);
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 10px;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 1;
+}
+
+.tab-indicator.pos-1 {
+    transform: translateX(calc(100% + 4px));
+}
+
+/* ====== Tab Panels ====== */
+.tab-panel {
+    display: none;
+    animation: tabFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tab-panel.active {
+    display: block;
+}
+
+@keyframes tabFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 
 /* Header */
 .ticket-header {
@@ -131,9 +174,7 @@ body {
     font-size: 2.2rem;
     font-weight: 700;
     margin-bottom: 0.5rem;
-    background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--text-main);
 }
 
 .ticket-header p {
@@ -210,7 +251,7 @@ textarea {
 
 input:focus, select:focus, textarea:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 4px var(--primary-glow);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
     background: rgba(15, 23, 42, 0.8);
 }
 
@@ -296,7 +337,7 @@ input[type="file"] {
 /* Button */
 .submit-btn {
     margin-top: 1rem;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    background: var(--primary);
     color: white;
     border: none;
     border-radius: 12px;
@@ -308,13 +349,12 @@ input[type="file"] {
     justify-content: center;
     align-items: center;
     gap: 0.8rem;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px var(--primary-glow);
+    transition: all 0.2s ease;
 }
 
 .submit-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px var(--primary-glow);
+    background: var(--primary-hover);
+    transform: translateY(-1px);
 }
 
 .submit-btn:active {
@@ -696,13 +736,11 @@ input[type="file"] {
     background: transparent;
     border: 1px solid var(--secondary) !important;
     color: var(--secondary) !important;
-    box-shadow: 0 4px 10px rgba(14, 165, 233, 0.15) !important;
 }
 
 .secondary-btn:hover {
     background: var(--secondary) !important;
     color: white !important;
-    box-shadow: 0 6px 20px rgba(14, 165, 233, 0.3) !important;
 }
 
 .test-btn {
@@ -726,8 +764,7 @@ input[type="file"] {
 .test-btn:hover {
     background: rgba(245, 158, 11, 0.08) !important;
     border-style: solid !important;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+    transform: translateY(-1px);
 }
 
 .test-btn:active {
@@ -758,15 +795,13 @@ input[type="file"] {
     top: calc(100% + 6px);
     left: 0;
     right: 0;
-    background: rgba(15, 23, 42, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(99, 102, 241, 0.4);
+    background: rgba(15, 23, 42, 0.97);
+    border: 1px solid var(--input-border);
     border-radius: 12px;
     max-height: 200px;
     overflow-y: auto;
     z-index: 1000;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 12px var(--primary-glow);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
     animation: fadeInSuggestions 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
